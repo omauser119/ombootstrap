@@ -18,6 +18,7 @@ build() {
         /usr/lib/firmware/postmarketos/wlan/prima/WCNSS_qcom_wlan_nv.bin; do
         if [ -f "$nv" ]; then
             add_file "$nv" /usr/lib/firmware/kupfer/wlan/prima/WCNSS_qcom_wlan_nv.bin 644
+            add_file "$nv" /usr/lib/firmware/wlan/prima/WCNSS_qcom_wlan_nv.bin 644
             break
         fi
     done
