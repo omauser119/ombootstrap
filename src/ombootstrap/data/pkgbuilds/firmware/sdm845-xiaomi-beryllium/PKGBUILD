@@ -1,0 +1,27 @@
+_mode=cross
+pkgname=firmware-sdm845-xiaomi-beryllium
+pkgver=0.5
+pkgrel=1
+_arches=specific
+arch=(aarch64)
+license=(custom:Proprietary)
+options=(!strip)
+_commit=d396d32118803235a58aab0d0bc3643256634a05
+source=(
+    "git+https://gitlab.com/sdm845-mainline/firmware-xiaomi-beryllium.git#commit=${_commit}"
+)
+sha256sums=(
+    SKIP
+)
+
+build() {
+    cd "$srcdir"/firmware-xiaomi-beryllium
+    rm -r lib/firmware/ath10k
+    mkdir usr/lib
+    mv lib/* usr/lib
+    rmdir lib
+}
+
+package() {
+    cp -avf "$srcdir"/firmware-xiaomi-beryllium/* "$pkgdir"/
+}

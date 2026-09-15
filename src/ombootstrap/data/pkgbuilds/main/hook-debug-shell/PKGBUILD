@@ -1,0 +1,97 @@
+_mode=cross
+_nodeps=true
+pkgname=hook-debug-shell
+pkgver=0.3
+pkgrel=2
+_arches=specific
+arch=(any)
+license=(MIT)
+depends=(mkinitcpio-kupfer-hooks)
+source=(
+    hooks.sh
+    install.sh
+    hook-debug-shell.conf
+    init-kupfer-debug
+    init_functions-kupfer-debug
+    initramfs-green-screen
+    initramfs-usb-telnet
+    green-00.ppm.gz
+    green-01.ppm.gz
+    green-02.ppm.gz
+    green-03.ppm.gz
+    green-04.ppm.gz
+    green-05.ppm.gz
+    green-06.ppm.gz
+    green-07.ppm.gz
+    green-08.ppm.gz
+    green-09.ppm.gz
+    green-10.ppm.gz
+    green-11.ppm.gz
+    green-12.ppm.gz
+    green-13.ppm.gz
+    green-14.ppm.gz
+    green-15.ppm.gz
+    green-16.ppm.gz
+    green-17.ppm.gz
+)
+noextract=(
+    green-00.ppm.gz
+    green-01.ppm.gz
+    green-02.ppm.gz
+    green-03.ppm.gz
+    green-04.ppm.gz
+    green-05.ppm.gz
+    green-06.ppm.gz
+    green-07.ppm.gz
+    green-08.ppm.gz
+    green-09.ppm.gz
+    green-10.ppm.gz
+    green-11.ppm.gz
+    green-12.ppm.gz
+    green-13.ppm.gz
+    green-14.ppm.gz
+    green-15.ppm.gz
+    green-16.ppm.gz
+    green-17.ppm.gz
+)
+sha256sums=(
+    5820c4ac0a6d9b75c1a69a04d9ee845aa9c2e2aa02e392f1829481f1f600c35a
+    8f2178aed4dc5c73f4b441c64f602a7894b9c06a5ab97d859044180146c06cc6
+    7c43236698942d154c7b98608b4cafaa5dcdb71d613f4c41f218f0b11c9d9728
+    0dd29dbef5558d68c4984d63c14f0a150a2f9c9532a002977a545aedf5562635
+    33b3ef9c11ea822f5c77f2babe69d4c0c049b99e9ac9c768cfcb008e1698a61b
+    32797a2bb7c4de2576d52bc0fcabe771e050abadbe988fdf1492551effbe3550
+    187ec2d9ba1d056755f9581721d11a2ff6343b29c08b3c2937a00a8c5b3a98b1
+    4c704ae4483a5e7721e60a6dfb4fe90a7df33227086fbc4b140608c0b1388bcd
+    1f6a68031de42dafc5bff4f09626e0c7be402fbfa31ef5e97fb7047662ee7bbc
+    f181b21ea3b36f88decd007b007b9dfd0c7d26700a86bf3cb65737d253dc67e9
+    e65a7b5a5ed28b4868d2590556ccf41fa30d163033e73c3b53769782980d179e
+    1f9a4c630383a8b30af54bed1d559a593f484a28c332f0ee57fd1337137fb497
+    b186f38dd76a1a4058d42223715b700bd4ff2eb0b78b5ef0d872693896e74416
+    2054b65d318ef94eac5e0881819116652cc1c222b3303c6819bb16996f8e842c
+    a53a386d46b4ea5ebc122e5b4d7964ee493ec789cabc4b85ec6f869bf6fc89aa
+    ab212cf9e492befadbaeba3c48b240391ef9c7eb37a19cccbf2314f77686281c
+    c09dfa905ce317beecb0e7889414c540b9d62c9917c5c29bdfcf930c4ec54685
+    6b6a947db46a6274b03c8434402857a7601d7d27b08ed9d11b422f9fee073a4a
+    c0eca8cf4b7bd1460565cffd40ec1f060d4f9b01f0573c04c8e74f06b622d871
+    abf19aeedd016d9c098b1d1364e29a107b8dbd70dc99903a0b0864c0f65a796a
+    896c51d9f5f59df481477a1b02640e6b8f3bc89f00b38c6a7308a0c113e8a57c
+    c3666a4ea1ebe0ada82cc80df5f1dd429a33815a717b70ccf51eeda4cf1d7503
+    191389f66b839d0617e9f818cd056ec48588dd25be779476d1129851ad690b3a
+    762ecdc7d5e03b1b58ad56300f4ca4135c00f318d120a2d7a1854a6b4b588a51
+    ddbfc4b8baf3fabc471575e699d0c1d8e33c91fb86d7847e382454cfd2d94899
+)
+
+package() {
+    install -Dm644 "$srcdir"/hook-debug-shell.conf "$pkgdir"/etc/kupfer/mkinitcpio.conf.d/40-debug-shell.conf
+    install -Dm755 "$srcdir"/hooks.sh "$pkgdir"/usr/lib/initcpio/hooks/debugshell
+    install -Dm755 "$srcdir"/install.sh "$pkgdir"/usr/lib/initcpio/install/debugshell
+    install -Dm644 "$srcdir"/init-kupfer-debug "$pkgdir"/usr/lib/initcpio/init-kupfer-debug
+    install -Dm644 "$srcdir"/init_functions-kupfer-debug "$pkgdir"/usr/lib/initcpio/init_functions-kupfer-debug
+    install -Dm755 "$srcdir"/initramfs-green-screen "$pkgdir"/usr/bin/initramfs-green-screen
+    install -Dm755 "$srcdir"/initramfs-usb-telnet "$pkgdir"/usr/bin/initramfs-usb-telnet
+
+    for image in "$srcdir"/green-*.ppm.gz; do
+        install -Dm644 "$image" "$pkgdir/usr/share/initramfs/${image##*/}"
+    done
+}

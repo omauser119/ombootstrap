@@ -1,0 +1,5 @@
+#!/bin/bash
+set -euo pipefail
+. /usr/share/omarchy/default/bash/env-bootstrap
+export GSK_RENDERER=ngl
+exec uwsm start -- Hyprland

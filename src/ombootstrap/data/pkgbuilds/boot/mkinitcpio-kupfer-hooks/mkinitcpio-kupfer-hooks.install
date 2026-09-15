@@ -1,0 +1,7 @@
+post_install() {
+  /usr/bin/mkinitcpio-overwrite
+}
+
+post_upgrade() {
+  /usr/bin/mkinitcpio-overwrite
+}

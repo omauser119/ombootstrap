@@ -1,0 +1,156 @@
+stages:
+  - check
+  - build
+  - deploy
+
+.ruff:
+  image:  ghcr.io/astral-sh/ruff:0.11-alpine
+  before_script:
+    - cd $CI_PROJECT_DIR
+    - ruff --version
+
+format:
+  stage: check
+  extends: .ruff
+  script:
+    - ruff format --check --diff
+
+lint:
+  stage: check
+  extends: .ruff
+  script:
+    - ruff check --output-format=gitlab > code-quality-report.json || true
+    - ruff check
+  artifacts:
+    reports:
+      codequality: $CI_PROJECT_DIR/code-quality-report.json
+
+typecheck:
+  stage: check
+  image: python
+  before_script:
+    - python3 -m venv venv
+    - source venv/bin/activate
+    - pip install -e '.[dev]'
+  script:
+    - ./typecheck.sh --non-interactive --junit-xml mypy-report.xml
+  artifacts:
+    reports:
+      junit: mypy-report.xml
+
+pytest:
+  stage: check
+  image: archlinux
+  before_script:
+    - pacman -Sy --noconfirm --needed archlinux-keyring && pacman -Su --noconfirm python python-pip sudo git base-devel arch-install-scripts rsync
+    - python3 -m venv venv
+    - venv/bin/pip3 install -r test_requirements.txt -r requirements.txt
+    - 'echo "omarchy ALL = (ALL) NOPASSWD: ALL" > /etc/sudoers.d/omarchy_all'
+    - useradd -m omarchy
+    - chmod 777 .
+    - usermod --unlock --expiredate="" nobody
+  script:
+    - script -e -c 'su -s /bin/bash -c ". venv/bin/activate && INTEGRATION_TESTS_USE_GLOBAL_CONFIG=TRUE INTEGRATION_TESTS_ENABLE=1 OMBOOTSTRAP_WRAPPED=DOCKER ./pytest.sh --junit-xml=pytest-report.xml --cov-report=xml:coverage.xml" omarchy'
+  coverage: '/(?i)total.*? (100(?:\.0+)?\%|[1-9]?\d(?:\.\d+)?\%)$/'
+  artifacts:
+    reports:
+      junit: pytest-report.xml
+      coverage_report:
+        coverage_format: cobertura
+        path: coverage.xml
+
+build_docker:
+  stage: build
+  image: quay.io/podman/stable:latest
+  before_script:
+    - ln -srfv $(type -P podman) /usr/local/bin/docker
+  script:
+    - 'docker build --pull --cache-from "${CI_REGISTRY_IMAGE}" -t "${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHA}" -t "${CI_REGISTRY_IMAGE}:${CI_COMMIT_REF_SLUG}" .'
+    - 'echo "running sanity check" && docker run -t --rm "${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHA}" ombs --help'
+  only:
+    - branches
+  except:
+    - main
+    - dev
+
+push_docker:
+  extends: build_docker
+  before_script:
+    - !reference [build_docker, before_script]
+    - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin "$CI_REGISTRY"
+  script:
+    - !reference [build_docker, script]
+    - docker push "${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHA}"
+    - docker push "${CI_REGISTRY_IMAGE}:${CI_COMMIT_REF_SLUG}"
+    - if [[ "$CI_COMMIT_REF_NAME" == "main" ]]; then (set -x && docker image tag "${CI_REGISTRY_IMAGE}:${CI_COMMIT_SHA}" "${CI_REGISTRY_IMAGE}:latest" && docker image push "${CI_REGISTRY_IMAGE}:latest") ; fi
+  only:
+    - main
+    - dev
+  except:
+
+.docs:
+  image: "$CI_REGISTRY_IMAGE:dev"
+  variables:
+    DOCS_SPHINXARGS: '-W'
+    DOCS_MAKE_TARGET: "html"
+    DOCS_MAKE_THREADS: 6
+  before_script: &docs_before_script
+    - python3 -m venv venv
+    - source venv/bin/activate
+    - pip install -r requirements.txt -r docs/requirements.txt
+  script: &docs_script
+    - make -C docs -j$DOCS_MAKE_THREADS SPHINXARGS="$DOCS_SPHINXARGS" $DOCS_MAKE_TARGET
+    - mv "docs/$DOCS_MAKE_TARGET" public
+    - if [[ -e docs/archived ]]; then cp -r docs/archived public/ ; fi
+    - rm -vf docs/archived/{main,dev,"$CI_COMMIT_REF_NAME"}.tar.gz  # we want to cache only old tags as they won't change
+  after_script:
+  artifacts:
+    paths:
+      - public
+  cache:
+    key: docs
+    paths:
+      - docs/archived/*.tar.gz
+
+build_docs:
+  stage: build
+  extends: .docs
+  except:
+    refs:
+      - main
+      - dev
+      - docs
+    variables:
+      - '$CI_COMMIT_MESSAGE =~ /ci-ombs-docs-build-full/'
+      - '$OMBS_DOCS_FULL_BUILD == "1"'
+
+build_docs_all:
+  stage: build
+  extends: pages
+  resource_group: $CI_COMMIT_SHA
+  script:
+    - (cd docs && make SPHINXARGS="$DOCS_SPHINXARGS -D 'version=$CI_COMMIT_REF_NAME'" && mkdir -p versions && cp -r html versions/$CI_COMMIT_REF_SLUG)
+    - *docs_script
+  only:
+    refs:
+      - branches
+    variables:
+      - '$CI_COMMIT_MESSAGE =~ /ci-ombs-docs-build-full/'
+      - '$OMBS_DOCS_FULL_BUILD == "1"'
+      - '$CI_COMMIT_REF_NAME == "docs"'
+  except:
+    - main
+    - dev
+
+pages:
+  stage: deploy
+  extends: .docs
+  only:
+    - main
+    - dev
+  variables:
+    DOCS_MAKE_TARGET: versions
+  resource_group: docs
+  before_script:
+    - git remote update
+    - *docs_before_script

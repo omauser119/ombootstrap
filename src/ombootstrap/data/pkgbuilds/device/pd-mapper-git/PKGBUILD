@@ -1,0 +1,34 @@
+_mode=host
+_crossdirect=false
+_pkgname=pd-mapper
+pkgname="$_pkgname-git"
+pkgdesc="Qualcomm Protection Domain mapper"
+pkgver=1.1.r0.g5ecd2fe
+pkgrel=1
+_arches=specific
+arch=(aarch64)
+license=(BSD-3-Clause)
+url="https://github.com/linux-msm/$_pkgname"
+provides=("$_pkgname")
+depends=(qrtr-git)
+_commit=5ecd2fe926aca7abfe40724177f63b942cff3947
+source=("git+$url#commit=$_commit")
+sha256sums=(SKIP)
+
+pkgver() {
+    cd "$_pkgname"
+    git describe --long --abbrev=7  --tags "$_commit" | sed 's/^v//;s/\([^-]*-g\)/r\1/;s/-/./g'
+}
+
+build() {
+    cd "$_pkgname"
+
+    make prefix=/usr
+}
+
+package() {
+    cd "$_pkgname"
+
+    make prefix=/usr DESTDIR="$pkgdir/" install
+    install -Dm644 LICENSE "$pkgdir"/usr/share/licenses/$_pkgname/COPYING
+}

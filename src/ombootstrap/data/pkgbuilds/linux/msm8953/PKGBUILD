@@ -1,0 +1,55 @@
+# Repackage the postmarketOS kernel without compiling it.
+_mode=cross
+_nodeps=true
+pkgname=linux-msm8953
+pkgver=7.1.3
+pkgrel=3
+_arches=specific
+arch=(aarch64)
+pkgdesc="Prebuilt postmarketOS Qualcomm MSM8953 kernel"
+license=(GPL-2.0-only)
+url=https://github.com/msm8953-mainline/linux
+depends=(coreutils kmod mkinitcpio)
+options=(!strip !debug !buildflags)
+backup=(etc/mkinitcpio.d/linux.preset)
+install=linux.install
+_apkname=linux-postmarketos-qcom-msm8953-7.1.3-r2.apk
+_kernver=7.1.3-msm8953
+source=(
+    "https://mirror.postmarketos.org/postmarketos/main/aarch64/$_apkname"
+    linux.preset
+    60-linux.hook
+    90-linux.hook
+)
+noextract=("$_apkname")
+sha256sums=(
+    a38fd1b23a073a5567523e1e19dab24d345f8baedbeb33ed10e704f4b43b4c70
+    66644820faa950a5fc59181f5aefcbed6d7ed652b29aee69979a2be2a032025d
+    ae2e95db94ef7176207c690224169594d49445e04249d2499e9d2fbc117a0b21
+    c20dce380025de175fe9a551b247b3fb05ecf068eef63e773f82b36be9568270
+)
+
+prepare() {
+    rm -rf "$srcdir/payload"
+    mkdir -p "$srcdir/payload"
+    # Extract payload only, excluding Alpine package metadata and scripts.
+    bsdtar -xf "$srcdir/$_apkname" -C "$srcdir/payload" boot usr/lib/modules
+}
+
+package() {
+    install -Dm644 "$srcdir/payload/boot/vmlinuz" "$pkgdir/boot/Image.gz"
+    install -Dm644 "$srcdir/payload/boot/System.map" "$pkgdir/boot/System.map"
+    install -Dm644 "$srcdir/payload/boot/config" "$pkgdir/boot/config"
+    cp -a "$srcdir/payload/boot/dtbs" "$pkgdir/boot/"
+    install -d "$pkgdir/usr/lib/modules"
+    cp -a "$srcdir/payload/usr/lib/modules/$_kernver" "$pkgdir/usr/lib/modules/"
+    depmod -b "$pkgdir/usr" -F "$pkgdir/boot/System.map" "$_kernver"
+
+    local subst="s|%PKGBASE%|$pkgname|g;s|%KERNVER%|$_kernver|g;/%EXTRAMODULES%/d"
+    sed "$subst" "$srcdir/linux.preset" |
+        install -Dm644 /dev/stdin "$pkgdir/etc/mkinitcpio.d/linux.preset"
+    sed "$subst" "$srcdir/60-linux.hook" |
+        install -Dm644 /dev/stdin "$pkgdir/usr/share/libalpm/hooks/60-linux-msm8953.hook"
+    sed "$subst" "$srcdir/90-linux.hook" |
+        install -Dm644 /dev/stdin "$pkgdir/usr/share/libalpm/hooks/90-linux-msm8953.hook"
+}

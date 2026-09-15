@@ -1,0 +1,58 @@
+_mode=cross
+_nodeps=true
+pkgname=device-sdm670-common
+pkgdesc="Common package for Qualcomm SDM670 devices"
+pkgver=0.1
+pkgrel=6
+_arches=specific
+arch=(aarch64)
+license=(MIT)
+provides=(alsa-ucm-conf)
+conflicts=(alsa-ucm-conf)
+depends=(
+    linux-firmware-atheros
+    linux-firmware-qcom
+    linux-sdm670
+    pd-mapper-git
+    qrtr-git
+    rmtfs-git
+    tqftpserv-git
+    boot-android-common
+    meta-modem-qcom
+    bootmac
+)
+_ucm_commit=ae7dee03e655fcb1aa68bb327397cd838cf99bb1
+_pmos_commit=801283d9f914a895ab2b331102788fc7261994a2
+source=(
+    "git+https://gitlab.com/sdm670-mainline/alsa-ucm-conf.git/#commit=$_ucm_commit"
+    "https://gitlab.com/postmarketOS/pmaports/-/raw/$_pmos_commit/device/community/soc-qcom-sdm845/51-qcom-sdm845.conf"
+    sdm670-common.conf
+    sdm670.lst
+    bootmac-bt.lst
+)
+sha256sums=(
+    SKIP
+    10cd88f61c136272b915ea41e11048e6df2c20543fbaa37902e4f019ea738c1d
+    557bde976b39d767305b870f0de1f5572bda953afc7d8ea153bf4b6cd2ae913d
+    54bb501681c29bbe59383adc2ce7c01fe59fc2e10e1aca3433cd4c8b8e9814a2
+    05bfc075fa627d4cee84275e81100319259f0c414727c868909d3f685ef1eaf3
+)
+
+package() {
+    install -Dm644 "$srcdir"/sdm670-common.conf "$pkgdir"/etc/kupfer/mkinitcpio.conf.d/sdm670-common.conf
+    install -Dm644 "$srcdir"/sdm670.lst "$pkgdir"/etc/kupfer/systemd/sdm670.lst
+    install -Dm644 "$srcdir"/bootmac-bt.lst "$pkgdir"/etc/kupfer/systemd/bootmac-bt.lst
+
+
+    # alsa ucm config
+    cd "$srcdir"/alsa-ucm-conf
+    export alsadir="${pkgdir}/usr/share/alsa/"
+    find ucm2 -type f -iname "*.conf" -exec install -vDm 644 {} "$alsadir"{} \;
+    find ucm2 -type l -iname "*.conf" -exec bash -c 'install -vdm 755 "${alsadir}$(dirname "{}")" && cp -dv "{}" "${alsadir}{}"' \;
+    install -vDm 644 LICENSE -t "$pkgdir/usr/share/licenses/$pkgname"
+    install -vDm 644 README.md -t "$pkgdir/usr/share/doc/$pkgname"
+    install -vDm 644 ucm2/README.md -t "$pkgdir/usr/share/doc/$pkgname/ucm2"
+
+    # wireplumber config
+    install -Dm644 "$srcdir"/51-qcom-sdm845.conf "$pkgdir"/usr/share/wireplumber/wireplumber.conf.d/51-qcom-sdm845.conf
+}

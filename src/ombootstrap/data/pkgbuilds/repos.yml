@@ -1,0 +1,61 @@
+ombs_ci_version: v0.1.0
+ombs_min_version: v0.1.0
+remote_url: https://pkgs.omarchy.org/$arch/$repo
+repos:
+  ombootstrap_local:
+    local_only: true
+    options:
+      SigLevel: Never
+  boot:
+    local_only: true
+    options:
+      SigLevel: Never
+  cross:
+    local_only: true
+    options:
+      SigLevel: Never
+  device:
+    options:
+      SigLevel: Never
+    local_only: true
+  firmware:
+    options:
+      SigLevel: Never
+    local_only: true
+  linux:
+    local_only: true
+    options:
+      SigLevel: Never
+  main:
+    options:
+      SigLevel: Never
+    local_only: true
+  omarchy:
+    # Omarchy publishes the complete AArch64 pacman repository as signed
+    # GitHub Release assets.  Keep the normal server for other architectures.
+    remote_url:
+      aarch64: https://github.com/riverscn/omarchy-pkgs-aarch64/releases/download/aarch64-stable
+      x86_64: https://pkgs.omarchy.org/$arch/$repo
+      armv7h: https://pkgs.omarchy.org/$arch/$repo
+    options:
+      SigLevel: Never
+base_distros:
+  x86_64:
+    remote_url: https://geo.mirror.pkgbuild.com/$repo/os/$arch
+    repos:
+      core: {}
+      extra: {}
+  aarch64:
+    remote_url: http://mirror.archlinuxarm.org/$arch/$repo
+    repos:
+      core: {}
+      extra: {}
+      alarm: {}
+      aur: {}
+  armv7h:
+    remote_url: http://mirror.archlinuxarm.org/$arch/$repo
+    repos:
+      core: {}
+      extra: {}
+      alarm: {}
+      aur: {}

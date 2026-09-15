@@ -1,0 +1,34 @@
+_mode=cross
+_nodeps=true
+pkgname=device-sdm845-oneplus-enchilada
+pkgver=0.6
+pkgrel=2
+_arches=specific
+arch=(aarch64)
+license=(MIT)
+depends=(device-sdm845-oneplus-common)
+_commit=ba2ec41c9683e4375444433a50841dfa04da94c1
+source=(
+    machine-info
+    https://gitlab.postmarketos.org/postmarketOS/pmaports/-/raw/${_commit}/device/community/device-oneplus-enchilada/deviceinfo
+    https://gitlab.postmarketos.org/postmarketOS/pmaports/-/raw/${_commit}/device/community/device-oneplus-enchilada/81-libssc-oneplus-enchilada.rules
+    https://gitlab.postmarketos.org/postmarketOS/pmaports/-/raw/${_commit}/device/community/device-oneplus-enchilada/hexagonrpcd.confd
+)
+sha256sums=(
+    7729d6a89258b470cadd48cfbc704bab7791501c53f45f50737dea6b441a3171
+    4fabab959a6eb6d998e8c8f3a9ac8359d18a9a370b8882748323b74fb2b3d8ae
+    cd8207ad1532669306f403cad22c5730e64f3a2a70d58e089225527acce059e2
+    82703747557e83293ecb185bf7808b0d36d5206f0b78cb5721c183d6e156f74b
+)
+
+package() {
+    install -Dm644 "$srcdir"/machine-info "$pkgdir"/etc/machine-info
+    install -Dm644 "$srcdir"/81-libssc-oneplus-enchilada.rules -t "$pkgdir"/usr/lib/udev/rules.d/
+    install -Dm644 "$srcdir"/hexagonrpcd.confd "$pkgdir"/etc/conf.d/hexagonrpcd-sdsp
+    cp "$srcdir"/deviceinfo "$srcdir"/deviceinfo_
+    cat >>"$srcdir"/deviceinfo_ <<EOF
+
+deviceinfo_partitions_data="/dev/sda17"
+EOF
+    install -Dm644 "$srcdir"/deviceinfo_ "$pkgdir"/etc/kupfer/deviceinfo
+}

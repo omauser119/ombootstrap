@@ -1,0 +1,110 @@
+# PostmarketOS Crossdirect
+# Wrapper for the "crossdirect" compilation method.
+# pmbootstrap mounts the native chroot in the foreign arch (e.g. armhf) chroot
+# as /native. This package gets installed into the native chroot, and creates
+# wrappers like:
+#
+# /native/usr/lib/crossdirect/armhf/gcc
+# -> /native/usr/bin/armv6-alpine-linux-muslgnueabihf-gcc
+#
+# When building packages in the armhf chroot, PATH will get prepended with
+# "/native/usr/lib/crossdirect/armhf". The end game is of course invoking the
+# cross compiler from the native chroot, running at native speed, whenever
+# calling the compiler from the foreign arch chroot. See crossdirect.c for
+# implementation details (llvm, fakeroot, rpath).
+_mode=host
+pkgname=crossdirect
+pkgdesc="Wrappers to launch native cross compilers in foreign chroots"
+pkgver=4
+pkgrel=2
+_arches=all
+arch=(
+    x86_64
+    aarch64
+    armv7h
+)
+license=(MIT)
+url=https://postmarketOS.org
+depends=(ccache)
+source=(
+    crossdirect.c
+    arch_to_hostspec
+    generate_rust_wrapper.sh
+    rust-qemu-linker.sh
+)
+sha256sums=(
+    4775566db958154eb43174ec84a3a2b40789c9130e13d61224f2c42076de6cf5
+    4c5309cca835221d1db8152183424c2f518183b54418d160871c3138db766479
+    1709bb11d7e23f861638979906f3e162b45ad974473364b6ae09e4a570d00fb7
+    ba90e8375efa48b1af3bb360ae1cdfa72c3fe745cf9b61a7940b2193f410d9fd
+)
+
+__target_arches=(x86_64 armv7h aarch64)
+
+build() {
+    export CARCH
+    cd "$srcdir"
+    # Architectures and binaries
+    echo "${__target_arches[*]}"
+    for _arch in "${__target_arches[@]}"; do
+        [ "$_arch" == "$CARCH" ] && continue
+        _hostspec="$("$srcdir"/arch_to_hostspec "$_arch" "$_arch" || true)"
+        [ -z "$_hostspec" ] && echo "skipping $_arch" && continue
+        echo "building for $_arch"
+        # Build with -Werror, because we maintain this short program. (If
+        # upstream is elsewhere, having -Werror is usually not desired.)
+        gcc -o "crossdirect-$_arch" \
+            -static \
+            -Werror \
+            -DHOSTSPEC="\"$_hostspec\"" \
+            crossdirect.c
+
+        # rustc
+        ./generate_rust_wrapper.sh "$_hostspec" >rustc-"$_arch"
+    done
+}
+
+package() {
+    # Architectures and binaries
+    _bins="c++ cc cpp g++ gcc clang clang++"
+
+    # Rust: qemu-linker
+    install -Dm755 "$srcdir/rust-qemu-linker.sh" \
+        "$pkgdir/usr/lib/crossdirect/rust-qemu-linker"
+
+    # Iterate over architectures
+    for _arch in "${__target_arches[@]}"; do
+        [ "$_arch" == "$CARCH" ] && continue
+
+        # Put arch-specific crossdirect wrapper in arch-specific bin folder
+        _bindir="$pkgdir/usr/lib/crossdirect/$_arch"
+        _ccachedir="$pkgdir/usr/lib/ccache/bin"
+        _hostspec="$("$srcdir"/arch_to_hostspec "$_arch" "$_arch" || true)"
+        _native_hostspec="$("$srcdir"/arch_to_hostspec "$_arch" "$CARCH" || true)"
+        [ -z "$_hostspec" ] && echo "skipping $_arch" && continue
+
+        mkdir -p "$pkgdir/usr/bin"
+        cd "$pkgdir/usr/bin"
+        if [ -n "$_native_hostspec" ] && [ "$_native_hostspec" != "$_hostspec" ]; then
+            for _bin in $_bins; do
+                ln -s {"$_native_hostspec","$_hostspec"}-"$_bin"
+            done
+            ln -s ./"$_native_hostspec" "$pkgdir"/usr/"$_hostspec"
+        fi
+
+        mkdir -p "$_bindir" "$_ccachedir"
+        cd "$_bindir"
+        cp "$srcdir/crossdirect-$_arch" "./"
+
+        # Create compiler symlinks
+        for _bin in $_bins; do
+            ln -s "crossdirect-$_arch" "$_bin"
+            ln -s "crossdirect-$_arch" "$_hostspec-$_bin"
+            ln -s ../../../bin/ccache "$_ccachedir/$_hostspec-$_bin"
+        done
+        ln -s ../../../bin/ccache "$_ccachedir/gcc4-${_hostspec}-gcc"
+
+        # rustc
+        install -Dm755 "$srcdir/rustc-$_arch" "$_bindir/rustc"
+    done
+}

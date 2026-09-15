@@ -1,0 +1,35 @@
+{
+  "kupferbootstrap": {
+    "url": "https://gitlab.com/kupfer/kupferbootstrap",
+    "commit": "dc59d928027f29801fe20ce74b9f4d8982a8a623"
+  },
+  "pkgbuilds": {
+    "url": "https://gitlab.com/kupfer/packages/pkgbuilds",
+    "commit": "3df1d560dae135c7ce96b94fdc7049c708b6cbc3"
+  },
+  "a6plte": {
+    "url": "https://gitlab.com/legengemini/pkgbuilds-msm8953",
+    "commit": "178b1bd6ca7134eb35ef47ae255fc81d7776a9d8"
+  },
+  "omarchy": {
+    "url": "https://github.com/riverscn/omarchy-aarch64",
+    "commit": "7a1ff012e27298e3e175b1672c7bfe7503c602ad"
+  },
+  "omarchy-pkgs": {
+    "url": "https://github.com/riverscn/omarchy-pkgs-aarch64",
+    "commit": "b6755f94956cab3c622b2f9ed7d4f1c4056cfcdd"
+  },
+  "kernel-msm8953": {
+    "url": "https://github.com/msm8953-mainline/linux/tree/barni2000/7.1.3/develop",
+    "commit": "7213855948c70fd165356526f1de1c3b6bf4d554"
+  },
+  "pmaports": {
+    "url": "https://gitlab.postmarketos.org/postmarketOS/pmaports/-/raw/main/device/community/linux-postmarketos-qcom-msm8953/APKBUILD",
+    "commit": "1c99c070fec92e755856426cac9ea9c68cb9445e"
+  },
+  "kernel-msm8953-prebuilt": {
+    "url": "https://mirror.postmarketos.org/postmarketos/main/aarch64/linux-postmarketos-qcom-msm8953-7.1.3-r2.apk",
+    "version": "7.1.3-r2",
+    "sha256": "a38fd1b23a073a5567523e1e19dab24d345f8baedbeb33ed10e704f4b43b4c70"
+  }
+}

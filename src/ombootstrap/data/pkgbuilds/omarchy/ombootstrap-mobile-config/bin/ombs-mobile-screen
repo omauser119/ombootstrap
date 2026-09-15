@@ -1,0 +1,21 @@
+#!/bin/bash
+set -euo pipefail
+exec 9>"${XDG_RUNTIME_DIR:?}/ombs-mobile-screen.lock"
+flock 9
+case ${1:-toggle} in
+  toggle)
+    if hyprctl -j monitors | jq -e 'any(.[]; .dpmsStatus == true or .dpms_status == true)' >/dev/null; then
+      state=off
+    else
+      state=on
+    fi
+    ;;
+  on|off) state=$1 ;;
+  *) echo 'Usage: ombs-mobile-screen [toggle|on|off]' >&2; exit 2 ;;
+esac
+if [[ $state == "on" ]]; then
+  hyprctl eval 'hl.config({ input = { touchdevice = { enabled = true } } }); hl.dispatch(hl.dsp.dpms({ action = "enable" }))'
+else
+  # A failed DPMS operation must not leave touch disabled permanently.
+  hyprctl eval 'hl.dispatch(hl.dsp.dpms({ action = "disable" })); hl.config({ input = { touchdevice = { enabled = false } } })'
+fi

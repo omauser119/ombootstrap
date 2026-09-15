@@ -1,0 +1,29 @@
+_mode=cross
+_nodeps=true
+pkgname=ombootstrap-mobile-config
+pkgdesc="Mobile controls and session configuration for Omarchy on phones"
+pkgver=0.1.0
+pkgrel=2
+_arches=specific
+arch=(aarch64)
+license=(GPL-3.0-or-later)
+depends=(
+    omarchy-mobile
+    wvkbd
+    jq
+    brightnessctl
+)
+
+package() {
+    install -d "$pkgdir/usr/share/ombootstrap/mobile" "$pkgdir/etc/skel/.config"
+    cp -a "$startdir/config/." "$pkgdir/usr/share/ombootstrap/mobile/"
+    for binary in "$startdir"/bin/*; do
+        install -Dm755 "$binary" "$pkgdir/usr/bin/${binary##*/}"
+    done
+    # omarchy-mobile owns the base skeleton; the setup command overlays this
+    # directory after user creation, avoiding pacman file ownership conflicts.
+    install -Dm644 "$startdir/omarchy-mobile.desktop" "$pkgdir/usr/share/wayland-sessions/omarchy-mobile.desktop"
+    install -Dm644 "$startdir/os-release" "$pkgdir/usr/share/ombootstrap/os-release"
+    install -Dm644 "$startdir/mobile.lst" "$pkgdir/etc/kupfer/systemd/ombootstrap-mobile.lst"
+    install -Dm644 "$startdir/ombs-mobile-keyboard.service" "$pkgdir/usr/lib/systemd/user/ombs-mobile-keyboard.service"
+}

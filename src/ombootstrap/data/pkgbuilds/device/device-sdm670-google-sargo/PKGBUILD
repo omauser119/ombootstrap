@@ -1,0 +1,45 @@
+_mode=cross
+_nodeps=true
+pkgname=device-sdm670-google-sargo
+pkgdesc="Google Pixel 3a"
+pkgver=0.1
+pkgrel=3
+_arches=specific
+arch=(aarch64)
+license=(MIT)
+depends=(
+    device-sdm670-common
+    firmware-sdm670-google-sargo
+)
+makedepends=(devicepkg-helpers)
+_commit=be110154ba203db01e58f87ee212657705abc129
+source=(
+    "https://gitlab.com/postmarketOS/pmaports/-/raw/${_commit}/device/testing/device-google-sargo/deviceinfo"
+    "https://gitlab.com/postmarketOS/pmaports/-/raw/${_commit}/device/testing/device-google-sargo/90-feedbackd-drv2624.rules"
+    "https://gitlab.com/postmarketOS/pmaports/-/raw/${_commit}/device/testing/device-google-sargo/modules-initfs"
+    google-sargo.conf
+    machine-info
+    rootston.ini
+)
+sha256sums=(
+    30ff670691d5481cd250f757730084fdb42a6c890bb2ef7514fa719b8b054ed3
+    581e6a37531d92c252b4cec9e7cf7b1c871681caee2b27e1a132454d1876a042
+    ae8ab7232bd4e81562b46a32e410da6f061a871e7dabda206ffea7599d1abe27
+    6ee0897a2b2ac2ce9a377830b3f97a63cbd426ede6a6da4cac352562196fa825
+    7729d6a89258b470cadd48cfbc704bab7791501c53f45f50737dea6b441a3171
+    85bb92a2dbbca89aaa3e78fd4e73931100d12bd534559c3131d534954940a263
+)
+
+package() {
+    install -Dm644 "$srcdir"/google-sargo.conf "$pkgdir"/etc/kupfer/mkinitcpio.conf.d/google-sargo.conf
+    install -Dm644 "$srcdir"/machine-info "$pkgdir"/etc/machine-info
+    install -Dm644 "$srcdir"/rootston.ini "$pkgdir"/etc/phosh/rootston.ini
+    install -Dm644 "$srcdir"/90-feedbackd-drv2624.rules "$pkgdir"/usr/lib/udev/rules.d/90-feedbackd-drv2624.rules
+    cp "$srcdir"/deviceinfo "$srcdir"/deviceinfo_
+    cat >>"$srcdir"/deviceinfo_ <<EOF
+
+deviceinfo_partitions_data="/dev/mmcblk0p72"
+deviceinfo_modules_initfs="$(cat "$srcdir"/modules-initfs | tr '\n' ' ')"
+EOF
+    install -Dm644 "$srcdir"/deviceinfo_ "$pkgdir"/etc/kupfer/deviceinfo
+}

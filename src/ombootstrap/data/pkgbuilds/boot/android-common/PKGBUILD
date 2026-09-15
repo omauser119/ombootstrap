@@ -1,0 +1,12 @@
+_mode=cross
+_nodeps=true
+pkgname=boot-android-common
+pkgver=0.1
+pkgrel=2
+_arches=specific
+arch=(aarch64)
+license=(MIT)
+depends=(
+    boot-android-bootimg-updater
+    reboot-mode
+)

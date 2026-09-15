@@ -1,0 +1,11 @@
+#!/bin/bash
+set -euo pipefail
+BACKLIGHT_DEVICE=
+conf="${XDG_CONFIG_HOME:-$HOME/.config}/ombootstrap/mobile.conf"
+[[ ! -r $conf ]] || . "$conf"
+if [[ -n $BACKLIGHT_DEVICE ]]; then
+  brightnessctl -d "$BACKLIGHT_DEVICE" info >/dev/null
+  printf '%s\n' "$BACKLIGHT_DEVICE"
+else
+  brightnessctl --class=backlight -m | awk -F, 'NR == 1 { print $1; found=1 } END { exit !found }'
+fi

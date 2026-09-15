@@ -1,0 +1,74 @@
+# Maintainer: Raihan Ahamed (raihan2000) <raihan1999ahamed@gmail.com>
+_mode=host
+_crossdirect=false
+pkgname=(hexagonrpcd)
+pkgdesc="Qualcomm HexagonFS daemon"
+pkgver=0.4.0.r9.gdd9ac70
+pkgrel=1
+_arches=all
+arch=(
+    x86_64
+    armv7h
+    aarch64
+)
+license=(GPL-3.0-or-later)
+url="https://github.com/linux-msm/hexagonrpc"
+depends=(glibc)
+makedepends=(
+    linux-headers
+    meson
+    git
+)
+_commit=dd9ac70c026e1bad93e8cffa3801255b8ceb551e
+_fastrpc_commit=2b580611a4b49364549dcee345fc18d45877e311
+source=(
+    "git+https://github.com/linux-msm/hexagonrpc.git#commit=$_commit"
+    "https://gitlab.alpinelinux.org/alpine/aports/-/raw/${_fastrpc_commit}/community/hexagonrpcd/10-fastrpc.rules"
+    hexagonrpcd-adsp-rootpd.service
+    hexagonrpcd-adsp-sensorspd.service
+    hexagonrpcd-sdsp.service
+    system-iio-sensor-proxy.service.d-hexagonrpcd.conf
+    system-iio-sensor-proxy.service.d-shutdown.conf
+    90-iio-sensor-proxy-proximity-sensor-enable.rules
+)
+sha256sums=(
+    SKIP
+    41dfc4e8c4fd88f461a5a6e4a4e86849eb302f8bcb2b5ce2efa9690f5415d52d
+    c89cb83fc7fecb232f530bcd60a3dd2d6846426f7c90173a1e078c6e15dc0bc0
+    c69215694bedbc366fb9aebc8c6c08f27bb612753626f1083b4d30fcefd2fa04
+    132aff498f306dd1951ae00aaae20b3b8df57d0c6bc92cb579de0e127cac73c4
+    5e56ebe9e07a5167c9489c54887432e095cd08408fe11cb3de06a40e034240c5
+    6fede30e6c04ebd950b7ea47d1ebd57f905561573ba94361a423bec5b5ae0416
+    7db6742728568abacc633cd992a7f3d4b54d7d0cd74532f7c9104afa05f315fd
+)
+
+pkgver() {
+    cd hexagonrpc
+    git describe --long --abbrev=7 --tags $_commit | sed 's/^v//;s/\([^-]*-g\)/r\1/;s/-/./g'
+}
+
+build() {
+    arch-meson hexagonrpc build
+    meson compile -C build
+}
+
+package() {
+    DESTDIR="$pkgdir" meson install --no-rebuild -C build
+
+    echo -e 'g fastrpc\nu fastrpc - "Qualcomm HexagonFS service" /var/lib/fastrpc' |
+      install -Dm644 /dev/stdin "$pkgdir/usr/lib/sysusers.d/fastrpc.conf"
+
+    # Allow access for FastRPC node for FastRPC user/group
+    install -Dm 644 "$srcdir"/10-fastrpc.rules -t "$pkgdir"/usr/lib/udev/rules.d/
+
+    install -Dm755 "$srcdir"/$pkgname-adsp-rootpd.service "$pkgdir"/usr/lib/systemd/system/$pkgname-adsp-rootpd.service
+    install -Dm755 "$srcdir"/$pkgname-adsp-sensorspd.service "$pkgdir"/usr/lib/systemd/system/$pkgname-adsp-sensorspd.service
+    install -Dm755 "$srcdir"/$pkgname-sdsp.service "$pkgdir"/usr/lib/systemd/system/$pkgname-sdsp.service
+    install -Dm644 "$srcdir"/system-iio-sensor-proxy.service.d-$pkgname.conf "$pkgdir"/usr/lib/systemd/system/iio-sensor-proxy.service.d/$pkgname.conf
+
+    # Reduce timeout to be killed until patch is upstream
+    install -Dm644 "$srcdir"/system-iio-sensor-proxy.service.d-shutdown.conf "$pkgdir"/usr/lib/systemd/system/iio-sensor-proxy.service.d/shutdown.conf
+
+    # Proximity was disabled upstream, so this re-enables it, also enable accel. sensor.
+    install -Dm644 "$srcdir"/90-iio-sensor-proxy-proximity-sensor-enable.rules -t "$pkgdir"/usr/lib/udev/rules.d/
+}

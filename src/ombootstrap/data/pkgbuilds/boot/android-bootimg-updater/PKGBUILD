@@ -1,0 +1,26 @@
+_mode=cross
+_nodeps=true
+pkgname=boot-android-bootimg-updater
+pkgver=0.5
+pkgrel=1
+_arches=all
+arch=(
+    aarch64
+    x86_64
+)
+license=(MIT)
+depends=(mkbootimg-git)
+install=android-bootimg-updater.install
+source=(
+    91-android-bootimg-updater.hook
+    update-bootimg.sh
+)
+sha256sums=(
+    01419bd235d098402fa78bf8127d229d2f8e4fb6f09ce9bc76b5df9e35e52479
+    a86f11bf6300918eb953d0d69de78905b847b61902f66e2b15945fb2d72fb24e
+)
+
+package() {
+    install -Dm644 "$srcdir"/91-android-bootimg-updater.hook "${pkgdir}/usr/share/libalpm/hooks/91-android-bootimg-updater.hook"
+    install -Dm755 "$srcdir"/update-bootimg.sh "$pkgdir"/usr/bin/update-bootimg
+}

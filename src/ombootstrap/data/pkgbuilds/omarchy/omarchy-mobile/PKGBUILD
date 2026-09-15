@@ -1,0 +1,101 @@
+_mode=cross
+_nodeps=true
+pkgname=omarchy-mobile
+pkgdesc="Omarchy AArch64 runtime adapted for Android-boot mobile devices"
+pkgver=4.0.0.alpha
+pkgrel=2
+_arches=specific
+arch=(aarch64)
+license=(MIT)
+url=https://github.com/riverscn/omarchy-aarch64
+depends=(
+    "hyprland>=0.56.1"
+    quickshell-git
+    uwsm
+    xdg-desktop-portal-hyprland
+    xdg-desktop-portal-gtk
+    pipewire
+    pipewire-alsa
+    pipewire-pulse
+    wireplumber
+    networkmanager
+    bluez
+    upower
+    polkit
+    gnome-keyring
+    qt6-wayland
+    qt6-svg
+    qt6-5compat
+    jq
+    git
+    perl
+    gum
+    python
+    python-pillow
+    procps-ng
+    util-linux
+    brightnessctl
+    wl-clipboard
+    cliphist
+    foot
+    nautilus
+    ttf-jetbrains-mono-nerd-basic
+    noto-fonts
+    noto-fonts-emoji
+    fontconfig
+    inotify-tools
+    libnotify
+    libnewt
+)
+conflicts=(
+    omarchy
+    omarchy-dev
+    omarchy-settings
+    omarchy-settings-dev
+)
+provides=(xdg-terminal-exec)
+makedepends=(
+    git
+    python
+)
+_commit=7a1ff012e27298e3e175b1672c7bfe7503c602ad
+source=("omarchy::git+https://github.com/riverscn/omarchy-aarch64.git#commit=$_commit")
+sha256sums=(SKIP)
+
+package() {
+    cd "$srcdir/omarchy"
+    install -d "$pkgdir/usr/share/omarchy" "$pkgdir/usr/bin"
+    # Adapt the upstream runtime recipe. Bootloader, storage provisioning and
+    # desktop /etc overrides deliberately belong to the phone"s device stack.
+    cp -a bin config default shell themes applications migrations install "$pkgdir/usr/share/omarchy/"
+    for binary in bin/*; do
+        [[ -f $binary ]] || continue
+        install -Dm755 "$binary" "$pkgdir/usr/bin/${binary##*/}"
+    done
+    # Arch Linux ARM does not publish xdg-terminal-exec.  Provide the
+    # Omarchy-compatible terminal entry point using the bundled foot terminal.
+    cat > "$pkgdir/usr/bin/xdg-terminal-exec" <<'EOF'
+#!/bin/sh
+exec foot "$@"
+EOF
+    chmod 755 "$pkgdir/usr/bin/xdg-terminal-exec"
+    # Use the phone"s selected backlight in the stock Quickshell display panel.
+    printf "%s\n" "#!/bin/bash" 'exec ombs-mobile-backlight "$@"' > "$pkgdir/usr/bin/omarchy-hw-display"
+    chmod 755 "$pkgdir/usr/bin/omarchy-hw-display"
+    cp "$pkgdir/usr/bin/omarchy-hw-display" "$pkgdir/usr/share/omarchy/bin/omarchy-hw-display"
+    for asset in version logo.txt logo.svg icon.txt icon.png; do
+        install -Dm644 "$asset" "$pkgdir/usr/share/omarchy/$asset"
+    done
+    install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+    install -d "$pkgdir/etc/skel/.config"
+    cp -a config/. "$pkgdir/etc/skel/.config/"
+    install -Dm644 default/fonts/omarchy/omarchy.ttf "$pkgdir/usr/share/fonts/omarchy/omarchy.ttf"
+    install -Dm644 default/uwsm/env.d/10-omarchy "$pkgdir/usr/share/uwsm/env.d/10-omarchy"
+    install -Dm644 default/xdg-terminal-exec/hyprland-xdg-terminals.list "$pkgdir/usr/share/xdg-terminal-exec/hyprland-xdg-terminals.list"
+    install -Dm644 default/hypr/toggles/flags.lua "$pkgdir/etc/skel/.local/state/omarchy/toggles/hypr/flags.lua"
+    # Keyboard authentication works on the shell"s built-in lock screen.
+    install -d "$pkgdir/etc/pam.d"
+    printf "auth include system-auth\naccount include system-auth\n" > "$pkgdir/etc/pam.d/omarchy-lock-password"
+    install -d "$pkgdir/etc/profile.d"
+    printf ". /usr/share/omarchy/default/bash/env-bootstrap\n" > "$pkgdir/etc/profile.d/omarchy.sh"
+}

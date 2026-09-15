@@ -1,0 +1,73 @@
+#!/usr/bin/ash
+
+# Author: Syboxez
+# Init Shim: Will mount and load a secondary initramfs
+
+source /usr/lib/initcpio/hooks/kupfer-functions.sh
+
+run_hook() {
+	set -e # Abort on error
+	unset LOOPDEV
+
+	eval "$(cat /etc/kupfer/deviceinfo)"
+	deviceinfo_partitions_microsd="$deviceinfo_partitions_microsd"
+	deviceinfo_partitions_data="$deviceinfo_partitions_data"
+
+	for part in "$deviceinfo_partitions_microsd" "$deviceinfo_partitions_data" /dev/sd?[0-9]* /dev/mmcblk[0-9]p* /dev/nvme[0-9]n[0-9]p* /dev/vd?[0-9]* /dev/hd?[0-9]* ; do
+		if [ ! -n "$part" ]; then
+			continue
+		fi
+
+		! scan_partitions "$part" "LABEL=kupfer_boot" || break
+	done
+
+	echo "Result in initsquared partition scan is: $RESULT"
+
+	if [ -z "$RESULT" ]; then
+		panic "No partition labeled kupfer_boot found. Erroring out..."
+	fi
+
+	busybox mkdir -p /mnt
+
+	echo "Mounting $RESULT"
+
+	busybox mount "$RESULT" /mnt
+
+	export REALINITRAMFS="/mnt/initramfs-linux.img"
+	[ -f "$REALINITRAMFS" ] || panic "UNABLE TO FIND INITRAMFS $REALINITRAMFS"
+
+	echo "Extracting $REALINITRAMFS"
+
+	# Extract new initramfs (code from the Mobian project)
+	#if command -v zstd > /dev/null && zstd --test "$REALINITRAMFS"; then
+	#	zstd -d -c -f "$REALINITRAMFS" | busybox cpio -u -i
+	if busybox gzip -t "$REALINITRAMFS"; then
+		busybox gzip -d -c -f "$REALINITRAMFS" | busybox cpio -u -i
+	elif busybox xz -t "$REALINITRAMFS"; then
+		busybox xz -d -c -f "$REALINITRAMFS" | busybox cpio -u -i
+	elif busybox unlzma -t "$REALINITRAMFS"; then
+		busybox unlzma -c -f "$REALINITRAMFS" | busybox cpio -u -i
+	else
+		panic "unable to decompress initramfs"
+	fi
+
+	# Clean up
+
+	echo "Cleaning up..."
+
+	busybox umount /mnt
+	if [ -n "$LOOPDEV" ]; then
+		busybox losetup -d "$LOOPDEV"
+	fi
+
+	busybox umount /dev/pts || true
+	busybox umount /dev || true
+	busybox umount /sys || true
+	[ -d /dev/pts ] && busybox rmdir /dev/pts
+
+
+	# exec new init binary to keep same PID
+	echo "Executing new /init"
+	exec /init
+}
+

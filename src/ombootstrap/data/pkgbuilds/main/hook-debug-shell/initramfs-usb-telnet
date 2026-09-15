@@ -1,0 +1,87 @@
+#!/usr/bin/ash
+set -u
+export PATH=/usr/bin:/usr/sbin:/bin:/sbin
+G=/sys/kernel/config/usb_gadget/initramfs_debug
+
+stage() {
+    printf '%s\n' "$1" > /run/initramfs-stage 2>/dev/null || true
+}
+
+mkdir -p /dev/pts /sys/kernel/config /run
+stage usb
+if [ ! -s /run/initramfs-green.pid ]; then
+    /usr/bin/initramfs-green-screen > /run/initramfs-green.log 2>&1 &
+    printf '%s\n' "$!" > /run/initramfs-green.pid
+fi
+mountpoint -q /dev/pts || mount -t devpts devpts /dev/pts
+modprobe libcomposite 2>/run/initramfs-usb-modprobe.log || { stage usb-error; exit 0; }
+modprobe usb_f_ecm 2>>/run/initramfs-usb-modprobe.log || { stage usb-error; exit 0; }
+mountpoint -q /sys/kernel/config || mount -t configfs configfs /sys/kernel/config
+
+# Wait for the built-in Qualcomm DWC3 controller to finish probing.
+UDC=
+for attempt in $(seq 1 30); do
+    for controller in /sys/class/udc/*; do
+        [ -e "$controller" ] || continue
+        UDC=${controller##*/}
+        break
+    done
+    [ -z "$UDC" ] || break
+    sleep 1
+done
+if [ -z "$UDC" ]; then
+    stage usb-error
+    echo "USB telnet: no USB device controller found" >&2
+    exit 0
+fi
+mkdir "$G" || exit 0
+printf '0x1d6b' > "$G/idVendor"
+printf '0x0104' > "$G/idProduct"
+mkdir -p "$G/strings/0x409" "$G/configs/c.1/strings/0x409"
+printf 'Omarchy' > "$G/strings/0x409/manufacturer"
+printf 'Initramfs USB debug' > "$G/strings/0x409/product"
+printf 'a6plte-initramfs' > "$G/strings/0x409/serialnumber"
+printf 'ECM debug network' > "$G/configs/c.1/strings/0x409/configuration"
+mkdir "$G/functions/ecm.usb0"
+printf '02:00:00:00:42:01' > "$G/functions/ecm.usb0/dev_addr"
+printf '02:00:00:00:42:02' > "$G/functions/ecm.usb0/host_addr"
+ln -s "$G/functions/ecm.usb0" "$G/configs/c.1/ecm.usb0"
+printf '%s' "$UDC" > "$G/UDC"
+
+IFACE=
+for attempt in $(seq 1 50); do
+    candidate=$(cat "$G/functions/ecm.usb0/ifname" 2>/dev/null || true)
+    case "$candidate" in
+        ''|'{unnamed net_device}') sleep 0.1 ;;
+        *) IFACE="$candidate"; break ;;
+    esac
+done
+if [ -z "$IFACE" ]; then
+    stage usb-error
+    echo "USB telnet: gadget interface did not get a name" >&2
+    exit 0
+fi
+printf '%s\n' "$IFACE" > /run/initramfs-usb-iface
+if ! ip address add 172.16.42.1/24 dev "$IFACE" || ! ip link set "$IFACE" up; then
+    stage usb-error
+    echo "USB telnet: failed to configure $IFACE" >&2
+    exit 0
+fi
+
+cat > /run/initramfs-udhcpd.conf <<EOF
+start 172.16.42.2
+end 172.16.42.2
+interface $IFACE
+option subnet 255.255.255.0
+option lease 3600
+lease_file /run/initramfs-udhcpd.leases
+pidfile /run/initramfs-udhcpd.pid
+EOF
+: > /run/initramfs-udhcpd.leases
+busybox udhcpd -f /run/initramfs-udhcpd.conf > /run/initramfs-dhcp.log 2>&1 &
+printf '%s\n' "$!" > /run/initramfs-dhcp.pid
+busybox telnetd -F -b 172.16.42.1:23 -l /bin/sh > /run/initramfs-telnet.log 2>&1 &
+printf '%s\n' "$!" > /run/initramfs-telnet.pid
+sleep 1
+echo "USB debug ready: telnet 172.16.42.1 (root shell, no password)"
+echo "USB debug runs in background while boot continues."

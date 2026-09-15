@@ -1,0 +1,39 @@
+_mode=cross
+pkgname=boot-qhypstub-git
+pkgver=r28.7fedbc9
+pkgrel=1
+_arches=specific
+arch=(aarch64)
+license=(GPL2)
+url=https://github.com/msm8916-mainline/qhypstub
+provides=(boot-qhypstub)
+makedepends=(
+    python
+    python-cryptography
+)
+_commit=7fedbc9262643e8e061777dcc0d39f17484fe76f
+_qtestsign_commit=3f22b307c68b1ac8c67458a4d3dc411013d57bce
+source=(
+    "git+$url#commit=$_commit"
+    "git+https://github.com/msm8916-mainline/qtestsign#commit=$_qtestsign_commit"
+)
+sha256sums=(
+    SKIP
+    SKIP
+)
+
+pkgver() {
+    cd "$srcdir"/qhypstub
+    printf "r%s.%s" "$(git rev-list --count HEAD)" "$(git rev-parse --short=7 HEAD)"
+}
+
+build() {
+    cd "$srcdir"/qhypstub
+    LDFLAGS="" make
+    ../qtestsign/qtestsign.py hyp qhypstub.elf
+}
+
+package() {
+    install -Dm644 "$srcdir"/qhypstub/qhypstub.bin "${pkgdir}/boot/qhypstub.bin"
+    install -Dm644 "$srcdir"/qhypstub/qhypstub-test-signed.mbn "${pkgdir}/boot/qhypstub-test-signed.mbn"
+}

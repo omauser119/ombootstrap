@@ -1,0 +1,20 @@
+_mode=cross
+pkgname=firmware-sdm670-google-sargo
+pkgver=0.1
+pkgrel=1
+_arches=specific
+arch=(aarch64)
+license=(custom:Proprietary)
+options=(!strip)
+
+_commit=da24f8062d9ff0bc24d29f6b0a8348b1b9c16c6b
+source=(
+    "git+https://codeberg.org/richard-stroker/sargo-package.git#commit=${_commit}"  # branch=package-stroker
+)
+sha256sums=(
+    SKIP
+)
+
+package() {
+    cp -avf "$srcdir"/sargo-package/* "$pkgdir"/
+}

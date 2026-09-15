@@ -1,0 +1,197 @@
+stages:
+  - check
+  - build
+  - notify
+
+variables:
+  LOGFILE: "$CI_PROJECT_DIR/logs/ombootstrap.log"
+
+default:
+  image: registry.gitlab.com/kupfer/ombootstrap:dev
+  before_script: &before_script
+    - |
+      branch="${CI_COMMIT_BRANCH:-UNDEFINED_BRANCH}" ;
+      cd /app &&
+      current_commit="$(git describe --always --abbrev=41)"
+      echo "Current Ombootstrap commit: '${current_commit}'"
+      git log --max-count=1
+      if [[ "$branch" != "$(git branch --show-current)" ]] && git remote update && dest_commit="$(git ls-remote origin 'refs/heads/*' | grep "refs/heads/${branch}\$" | cut -f1)" ; then
+        if [[ -n "$dest_commit" ]] && [[ "$current_commit" != "$dest_commit" ]] ; then
+          echo "switching local commit '${current_commit}' to remote commit '${dest_commit}'" &&
+          git checkout -f -b "$branch" "$dest_commit" && git log --max-count=1 && pip install -r requirements.txt --break-system-packages ;
+        else
+          echo "Ombootstrap branch up to date with remote commit '$dest_commit'" ;
+        fi
+      fi
+    - mkdir -p /kupfer/{pkgbuilds,packages,prebuilts,pacman} /root/.cache/kupfer "$(dirname "$LOGFILE")"
+    - mount --rbind /kupfer/{packages,prebuilts}
+    - mount --rbind "$CI_PROJECT_DIR" /kupfer/pkgbuilds/
+    - for dir in /pkgbuilds /prebuilts; do mkdir -p "$dir" && mount --bind /kupfer"$dir" "$dir"; done
+    - mount --rbind /kupfer /root/.cache/kupfer
+    - cd /kupfer
+    - ombs version check --ci || true
+    - ombs config init -N
+  artifacts: &logartifacts
+    name: logs
+    paths:
+      - "$LOGFILE"
+    expire_in: 30 days
+    when: always
+
+check_formatting:
+  stage: check
+  script:
+    - script -e --log-out "$LOGFILE" -c 'ombs packages check all'
+    - script -e --log-out "$LOGFILE" -a -c '(cd /kupfer/pkgbuilds && ./.gitlab/check_modified.sh)'
+
+.build:
+  stage: build
+  only: &build_only
+    refs:
+      - branches
+    changes:
+      - '[a-z]*/*/*'
+  variables:
+    buildarch: "aarch64"
+    FALLBACK_CACHE_KEY: build-dev
+    PACKAGER_NAME: "Kupfer Test CI"
+    PACKAGER_EMAIL: "kupfer@kupfer.cu"
+    SRCINFO_CACHE_ARCHIVE: "srcinfos.tar.gz"
+  before_script: &build_before
+    - *before_script
+    - git config --global user.email "$PACKAGER_EMAIL"
+    - git config --global user.name "$PACKAGER_NAME"
+    - export PACKAGER="${PACKAGER_NAME} <${PACKAGER_EMAIL}>"
+    - cd /kupfer
+    - git clone --depth=5 -b "$REPOBRANCH" https://gitlab.com/kupfer/packages/prebuilts.git packages
+    - cd /kupfer/packages
+    - |
+      # move prebuilts to pacman cache to start with empty pacman repo; leave db files intact for hash comparisons
+      for repo_arch in $(find -maxdepth 1 -type d -regex './[a-z]+[a-z0-9_]*' -print0 | xargs -0 -n1 basename); do
+        target_dir="/kupfer/pacman/${repo_arch}"
+        mkdir -p "$target_dir"
+        for file in "$repo_arch"/*/*.pkg.tar.*; do
+          mv -f -v "$file" "$target_dir"
+        done
+        rm -fv "$repo_arch"/*/*.{db,files}.tar.*
+      done
+    - cd /kupfer/pkgbuilds
+    - .gitlab/clean_srcinfo_cache.sh
+    - git fetch --unshallow origin "$REPOBRANCH"
+    - echo -e "\e[0Ksection_start:`date +%s`:srcinfo_cache\r\e[0KExtracting .srcinfo_initialised from cache '$SRCINFO_CACHE_ARCHIVE'"
+    - (! [[ -e "/kupfer/packages/$SRCINFO_CACHE_ARCHIVE" ]] && echo "no srcinfo cache archive found") || [[ "$CI_NO_SRCINFO_CACHE" == "1" ]] || script -e --log-out "$LOGFILE" -c "ombs packages init --non-interactive --init-caches"
+    - echo -e "\e[0Ksection_end:`date +%s`:srcinfo_cache\r\e[0K"
+  script: &build_script
+    - cd /kupfer/pkgbuilds
+    # FIXME: building cross/ prevents these packages from getting dropped; will be fixed by proper multiarch support
+    - script -e --log-out "$LOGFILE" -c "ombs -v packages build --arch 'x86_64' $(echo cross/*/PKGBUILD | xargs -n1 dirname | xargs)"
+    - script -e --log-out "$LOGFILE" -c "ombs -v packages build --arch '$buildarch' all"
+    - 'cd /kupfer/pkgbuilds && ./.gitlab/check_modified.sh'
+    - cd /kupfer/packages
+    - rm -rf */kupfer_local
+    # gitlab doesn't resolve symlinks, replace them
+    - find -type l '(' -name '*.files' -o -name '*.db' ')' -exec /kupfer/pkgbuilds/.gitlab/copy_db_symlinks.sh {} +
+    - (git ls-files --others --deleted --exclude-standard | grep '\.pkg\.tar\.' | tee /dev/stderr | xargs -r dirname | xargs --verbose --no-run-if-empty -- git add) || echo "Apparently no package changes to upload."
+    - >
+      if (echo "$CI_COMMIT_MESSAGE" | grep -q '\[KUPFER_CI_FORCE_COMMIT_REPOS\]') ; then
+        git add [a-z]*/*/*.{db,files}{,.tar.*}
+      fi
+    - git status
+    - rm -f "$SRCINFO_CACHE_ARCHIVE" && (cd /kupfer/pkgbuilds && tar -czf "$SRCINFO_CACHE_ARCHIVE" */*/{.srcinfo_initialised.json,.SRCINFO,.srcinfo_meta.json} && cp "$SRCINFO_CACHE_ARCHIVE" /kupfer/packages/)
+    -
+      (if ! (git commit -m "$("$CI_PROJECT_DIR"/.gitlab/generate-commit-message.sh)" && git add "$SRCINFO_CACHE_ARCHIVE" && git commit --amend --no-edit >/dev/null && git show --name-only | tee .commit); then
+        echo 'git commit failed! checking prebuilts.git commit history' >&2 &&
+        if ! [[ -n "$CI_COMMIT_SHA" ]]; then
+          echo 'No pkgbuilds.git commit sha found!' >&2 &&
+          exit 1 ;
+        fi ;
+        last_modified="$(cd "$CI_PROJECT_DIR" && git log --format=oneline [a-z]* | head -n1 | cut -d' ' -f1)" || true ;
+        for commit in "$CI_COMMIT_SHA" "$last_modified" ; do
+          [[ -n "$commit" ]] || continue ;
+          if (git log --format=oneline | grep -q "$commit") ; then
+            echo -e "Commit found. Seems like prebuilts for $commit were already built.\nNot erroring." >&2 &&
+            (source "$CI_PROJECT_DIR/.gitlab/common.sh" && FORCE_COLOR=1 echoerr 'WARNING! No packages were built!\nIt was determined that no changes to PKGBUILDs were made, so this CI job is marked as a success.\nIf you made changes that should cause packages to be built, make sure your commits changed the pkgver or pkgrel of the PKGBUILDs.\nIf the versions differ from the binary repos and no builds occur, this is a CI- or KBS-bug!') &&
+            exit 0 ;
+          fi ;
+          echo "Commit $commit not found in log.">&2 ;
+        done ;
+        echo "Commit hashes $CI_COMMIT_SHA $last_modified not found in prebuilts.git log. Erroring out.">&2 &&
+        exit 1 ;
+      fi)
+  cache:
+    - key: build-$CI_COMMIT_REF_SLUG
+      paths:
+        - "[a-z]*/*/.srcinfo_initialised.json"
+        - "[a-z]*/*/.srcinfo_meta.json"
+        - "[a-z]*/*/.SRCINFO"
+
+
+build_packages:
+  variables:
+    REPOBRANCH: dev
+  extends: .build
+  except:
+    - main@kupfer/packages/pkgbuilds
+    - dev@kupfer/packages/pkgbuilds
+  script:
+    - '[[ "$(echo "$CI_PROJECT_NAMESPACE" | cut -d/ -f1)" == "kupfer" ]] || (source $CI_PROJECT_DIR/.gitlab/common.sh && FORCE_COLOR=1 echoerr "WARNING: RUNNING CROSS-ARCH PACKAGE BUILDS ON GITLAB PUBLIC RUNNERS OFTEN MAY FAIL!\nWE RECOMMEND USING YOUR OWN RUNNER!\n(disregard this message if you already do)")'
+    - *build_script
+    - "echo 'Success! Production branches would push the binaries now!'"
+    - '[[ -e .commit ]] || exit 0'
+    - cd /kupfer/packages
+    - git reset HEAD^  # the after_script copies new files
+  after_script:
+    - "echo 'after_script: copying files!'"
+    - cd /kupfer/packages
+    - >
+      for p in \
+            $(git ls-files --others --exclude-standard | grep -E -e'\.pkg\.tar') \
+            $(if (echo "$CI_COMMIT_MESSAGE" | grep -q '\[KUPFER_CI_FORCE_COMMIT_REPOS\]') ; then echo [a-z]*/*/*.{db,files}.tar.* ; fi) \
+      ; do
+        echo "copying $p" ; install -Dm644 "$p" "$CI_PROJECT_DIR/packages/$p" || true; 
+      done
+  artifacts:
+    <<: *logartifacts
+    name: artifacts
+    paths:
+      - "$LOGFILE"
+      - "packages/*/*/*.*"
+      - "$SRCINFO_CACHE_ARCHIVE"
+
+push_packages:
+  variables:
+    REPOBRANCH: "$CI_COMMIT_BRANCH"
+    PACKAGER_NAME: "Kupfer Bot"
+    PACKAGER_EMAIL: "kupfer@kupfer.cu"
+  extends: .build
+  tags:
+    - packages
+  only: &push_only
+    <<: *build_only
+    refs:
+      - main@kupfer/packages/pkgbuilds
+      - dev@kupfer/packages/pkgbuilds
+  before_script:
+    - *build_before
+    - mkdir -p ~/.ssh
+    - chmod 700 ~/.ssh
+    - cd ~/.ssh
+    - eval $(ssh-agent -s)
+    - echo "$SSH_KEY" > id_rsa.base64
+    - openssl enc -d -base64 -A -in id_rsa.base64 -out id_rsa
+    - chmod 600 id_rsa
+    - ssh-add id_rsa
+    - ssh-keyscan -t rsa gitlab.com >> ~/.ssh/known_hosts
+    - (cd /kupfer/packages && git remote set-url origin git@gitlab.com:kupfer/packages/prebuilts.git)
+  script:
+    - *build_script
+    - (git push || git push) # try pushing twice since pushing occasionally fails
+
+
+trigger_website_rebuild:
+  stage: notify
+  trigger:
+    project: kupfer/kupfer.gitlab.io
+    strategy: depend
+  only:
+    <<: *push_only

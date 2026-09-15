@@ -1,0 +1,14 @@
+_mode=cross
+_nodeps=true
+pkgname=flavour-barebone
+pkgdesc="Kupfer flavour: ultra minimal installation - nothing included"
+pkgver=1.0
+pkgrel=1
+_arches=all
+arch=(
+    x86_64
+    aarch64
+    armv7h
+)
+license=(GPL3)
+depends=()

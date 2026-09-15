@@ -1,0 +1,30 @@
+_mode=host
+# Maintainer: Shun Li <riverscn@gmail.com>
+pkgname=omarchy-aarch64-keyring
+pkgdesc="Signing keyring for the Omarchy AArch64 package repository"
+pkgver=20260826
+pkgrel=1
+_arches=all
+arch=(any)
+license=("GPL-3.0-or-later")
+url="https://github.com/riverscn/omarchy-pkgs-aarch64"
+install=$pkgname.install
+source=(
+    "omarchy-aarch64.gpg"
+    "omarchy-aarch64-revoked"
+    "omarchy-aarch64-trusted"
+    "$install"
+)
+sha256sums=(
+    "d170233ecbdf1fc3c33a681c29279d96b6acd5ffcb0c051fa073a159881434f3"
+    "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    "48f7a5cde7e30156717cc0fe088ec251bdddfe16f75e55c31ed8efc5bb01feca"
+    "12cfcc7a891d5ba4560f4e58e1968ba19b029c8f56e253b9d961fee3f93e28c7"
+)
+
+package() {
+  install -Dm0644 -t "$pkgdir/usr/share/pacman/keyrings" \
+    omarchy-aarch64.gpg \
+    omarchy-aarch64-revoked \
+    omarchy-aarch64-trusted
+}

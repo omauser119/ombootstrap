@@ -1,0 +1,6 @@
+haveged.service
+systemd-resolved.service
+systemd-timesyncd.service
+systemd-logind.service
+bluetooth.service
+NetworkManager.service

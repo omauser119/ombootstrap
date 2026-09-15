@@ -1,0 +1,37 @@
+_mode=host
+_crossdirect=false
+_pkgname=tqftpserv
+pkgname="$_pkgname-git"
+pkgdesc="Trivial File Transfer Protocol server over AF_QIPCRTR"
+pkgver=1.2.r0.gb6bb92d
+pkgrel=1
+_arches=specific
+arch=(aarch64)
+license=(BSD-3-Clause)
+url="https://github.com/linux-msm/$_pkgname"
+provides=("$_pkgname")
+makedepends=(
+    git
+    meson
+    qrtr-git
+    zstd
+)
+_commit=b6bb92d40cfffe28621abcf7bfaa6d99beea46cb
+source=("git+$url#commit=$_commit")
+sha256sums=(SKIP)
+
+pkgver() {
+    cd "$_pkgname"
+    git describe --long --abbrev=7  --tags "$_commit" | sed 's/^v//;s/\([^-]*-g\)/r\1/;s/-/./g'
+}
+
+build() {
+    arch-meson $_pkgname build
+    meson compile -C build
+}
+
+package() {
+    meson install -C build --destdir "$pkgdir"
+
+    install -Dm644 "$_pkgname"/LICENSE "$pkgdir"/usr/share/licenses/$_pkgname/COPYING
+}

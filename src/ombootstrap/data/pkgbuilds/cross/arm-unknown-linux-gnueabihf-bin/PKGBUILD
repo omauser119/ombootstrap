@@ -1,0 +1,56 @@
+_mode=cross
+pkgname=arm-unknown-linux-gnueabihf-bin
+pkgdesc="armv7h crosscompiler binaries from ArchlinuxARM"
+pkgver=20220530
+pkgrel=2
+_arches=specific
+arch=(x86_64)
+license=(
+    GPL3
+    LGPL
+    FDL
+    custom
+)
+provides=(
+    armv7l-unknown-linux-gnueabihf-bin
+    armv7l-unknown-linux-gnueabihf-gcc
+    armv7l-unknown-linux-gnueabihf-binutils
+    armv7l-unknown-linux-gnueabihf-gdb
+    armv7l-unknown-linux-gnueabihf-glibc
+    armv7l-unknown-linux-gnueabihf-api-headers
+    arm-unknown-linux-gnueabihf-gcc
+    arm-unknown-linux-gnueabihf-binutils
+    arm-unknown-linux-gnueabihf-gdb
+    arm-unknown-linux-gnueabihf-glibc
+    arm-unknown-linux-gnueabihf-linux-api-headers
+)
+source=("https://archlinuxarm.org/builder/xtools/x-tools7h.tar.xz")
+sha256sums=(
+    92974755f86fe13c3b2536e62c4ade0ba03964a92f55c7e712884160bf0d6d5a
+)
+noextract=(
+    x-tools7h.tar.xz
+)
+
+prepare() {
+    target_dir="$srcdir/x-tools7h"
+    [[ ! -e "$target_dir" ]] || find "$target_dir" -type d -exec chmod 755 '{}' '+'
+    rm -rf "$target_dir"
+    bsdtar -xf "$srcdir/x-tools7h.tar.xz" -C "$srcdir"
+}
+
+package() {
+    archname="arm-unknown-linux-gnueabihf"
+    source_dir="${srcdir}/x-tools7h/${archname}"
+    target_dir="${pkgdir}/opt/"
+    bindir="${pkgdir}/usr/bin"
+    mkdir -p "${pkgdir}/opt"
+    cp -r "$source_dir" "${target_dir}"
+    mkdir -p "$bindir"
+    linksrc="../../opt/${archname}"
+    for bin in "${source_dir}/bin/arm"*-*; do
+        ln -sfv "${linksrc}/bin/$(basename "$bin")" "${bindir}/"
+    done
+
+    ln -sfv "../opt/${archname}/${archname}" "${pkgdir}/usr/"
+}

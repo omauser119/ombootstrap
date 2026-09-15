@@ -1,0 +1,47 @@
+_mode=host
+pkgname=postmarketos-tweaks
+pkgdesc="Tweak tool for phone UIs"
+pkgver=0.13.0.r0.g38a2438
+pkgrel=1
+_arches=all
+arch=(
+    x86_64
+    aarch64
+)
+license=(GPL-3.0-or-later)
+url=https://gitlab.com/postmarketOS/postmarketos-tweaks
+depends=(
+    gtk3
+    libhandy
+    python
+    python-gobject
+    python-yaml
+)
+makedepends=(
+    meson
+    ninja
+    python-setuptools
+)
+_commit=38a24389ecdbc35ea8cab098874d01d82eca3c67
+source=(
+    "git+https://gitlab.com/postmarketOS/postmarketos-tweaks.git#commit=$_commit"
+)
+sha256sums=(
+    SKIP
+)
+
+pkgver() {
+    cd "$pkgname"
+    git describe --long --tags --abbrev=7 "$_commit" | sed 's/^v//;s/\([^-]*-g\)/r\1/;s/-/./g'
+}
+
+build() {
+    arch-meson ${pkgname} output
+    ninja -C output
+}
+
+package() {
+    DESTDIR="$pkgdir" meson install --no-rebuild -C output
+
+    rm "$pkgdir"/usr/share/postmarketos-tweaks/pinephone.yml
+}

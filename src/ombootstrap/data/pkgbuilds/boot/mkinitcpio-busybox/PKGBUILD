@@ -1,0 +1,73 @@
+# Native packaging; non-aarch64 targets still compile with musl-gcc.
+_mode=host
+_crossdirect=false
+pkgname=mkinitcpio-busybox-kupfer
+pkgdesc="Base initramfs tools"
+pkgver=1.36.1
+pkgrel=3
+_arches=all
+arch=(
+    aarch64
+    armv7h
+    x86_64
+)
+license=(GPL)
+url=https://www.busybox.net
+provides=(mkinitcpio-busybox)
+conflicts=(mkinitcpio-busybox)
+makedepends_armv7h=(musl kernel-headers-musl)
+makedepends_x86_64=(musl kernel-headers-musl)
+options=(!buildflags !strip)
+source=(config)
+sha256sums=(214ce3c2e5df9353f01b6fb7892bc235d5a39a462f0a0e9680f6aa65b5f4252e)
+# Official Arch Linux ARM static musl binary, pinned independently of pkgrel.
+source_aarch64=(
+    "https://de3.mirror.archlinuxarm.org/aarch64/extra/busybox-1.36.1-4-aarch64.pkg.tar.xz"
+)
+sha256sums_aarch64=(c0e190efeac55ad97a3461ddf680171c02bbce40f66f05e2cb57b4a58b0efdff)
+source_armv7h=("https://busybox.net/downloads/busybox-$pkgver.tar.bz2")
+sha256sums_armv7h=(b8cc24c9574d809e7279c3be349795c5d5ceb6fdf19ca709f80cde50e47de314)
+source_x86_64=("https://busybox.net/downloads/busybox-$pkgver.tar.bz2")
+sha256sums_x86_64=(b8cc24c9574d809e7279c3be349795c5d5ceb6fdf19ca709f80cde50e47de314)
+
+prepare() {
+    [[ "$CARCH" == aarch64 ]] && return 0
+    cd "busybox-$pkgver"
+
+    case "$CARCH" in
+        aarch64)
+            bbmarch=armv8-a
+            ;;
+        armv7h)
+            bbmarch=armv7-a
+            ;;
+        x86_64)
+            bbmarch=x86-64
+            ;;
+    esac
+
+    local safeflags="-march=${bbmarch} -Os -pipe -fno-strict-aliasing"
+
+    sed 's|^\(CONFIG_EXTRA_CFLAGS\)=.*|\1="'"$safeflags"'"|' "$srcdir/config" >.config
+}
+
+build() {
+    [[ "$CARCH" == aarch64 ]] && return 0
+    # GCC 16 implicitly links libatomic_asneeded, unavailable with musl.
+    # Put the flag in CC so BusyBox linker probes also receive it.
+    local cc=musl-gcc
+    if musl-gcc -flink-libatomic -x c -c /dev/null -o /dev/null 2>/dev/null; then
+        cc="musl-gcc -fno-link-libatomic"
+    fi
+    # reproducible build
+    KCONFIG_NOTIMESTAMP=1
+    LDFLAGS="$LDFLAGS -static" make -C "busybox-$pkgver" CC="$cc" CXX="$cc"
+}
+
+package() {
+    if [[ "$CARCH" == aarch64 ]]; then
+        install -Dm755 "$srcdir/usr/bin/busybox" "$pkgdir/usr/lib/initcpio/busybox"
+    else
+        install -Dm755 "$srcdir/busybox-$pkgver/busybox" "$pkgdir/usr/lib/initcpio/busybox"
+    fi
+}

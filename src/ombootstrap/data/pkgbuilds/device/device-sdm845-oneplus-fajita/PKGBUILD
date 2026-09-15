@@ -1,0 +1,34 @@
+_mode=cross
+_nodeps=true
+pkgname=device-sdm845-oneplus-fajita
+pkgver=0.6
+pkgrel=2
+_arches=specific
+arch=(aarch64)
+license=(MIT)
+depends=(device-sdm845-oneplus-common)
+_commit=ba2ec41c9683e4375444433a50841dfa04da94c1
+source=(
+    machine-info
+    https://gitlab.postmarketos.org/postmarketOS/pmaports/-/raw/${_commit}/device/community/device-oneplus-fajita/deviceinfo
+    https://gitlab.postmarketos.org/postmarketOS/pmaports/-/raw/${_commit}/device/community/device-oneplus-fajita/81-libssc-oneplus-fajita.rules
+    https://gitlab.postmarketos.org/postmarketOS/pmaports/-/raw/${_commit}/device/community/device-oneplus-fajita/hexagonrpcd.confd
+)
+sha256sums=(
+    7729d6a89258b470cadd48cfbc704bab7791501c53f45f50737dea6b441a3171
+    ff82c5c0a2cba200fd908164e465acd1a8619ccaaad2b0adf4a5104dd5b53aeb
+    1fca2b33d91cc3021f59bac278190fd944993e2a4479ee1560d6003b3f0ce49f
+    11904ee6ceea5b0e7f74068cdbef627277b41a32a8d2642a61f1e9ea79b80784
+)
+
+package() {
+    install -Dm644 "$srcdir"/machine-info "$pkgdir"/etc/machine-info
+    install -Dm644 "$srcdir"/81-libssc-oneplus-fajita.rules -t "$pkgdir"/usr/lib/udev/rules.d/
+    install -Dm644 "$srcdir"/hexagonrpcd.confd "$pkgdir"/etc/conf.d/hexagonrpcd-sdsp
+    cp "$srcdir"/deviceinfo "$srcdir"/deviceinfo_
+    cat >>"$srcdir"/deviceinfo_ <<EOF
+
+deviceinfo_partitions_data="/dev/sda17"
+EOF
+    install -Dm644 "$srcdir"/deviceinfo_ "$pkgdir"/etc/kupfer/deviceinfo
+}

@@ -1,0 +1,52 @@
+_mode=cross
+_nodeps=true
+pkgname=base-kupfer
+pkgver=0.3
+pkgrel=2
+_arches=specific
+arch=(aarch64)
+license=(MIT)
+depends=(
+    alsa-ucm-conf
+    alsa-utils
+    bluez
+    bluez-libs
+    bluez-utils
+    haveged
+    iw
+    net-tools
+    networkmanager
+    openssh
+    sudo
+    usb-tethering
+    wireless-regdb
+    wpa_supplicant
+    xdg-user-dirs
+    mkinitcpio-kupfer-hooks
+    parted
+    kupfer-config
+)
+source=(
+    ignore-power-key.conf
+    locale.conf
+    random-mac.conf
+    fstab
+    base-kupfer.lst
+)
+sha256sums=(
+    784c1237e8c553fd9717e4caf8b996abb4631348b27e3425bb8e39bd7e617476
+    151b67da4450eb4f81143835f2342a4302284a0f336c4e13bb9de69009611c9b
+    06198df3c43c556d0fe8388fafc22527342714e163235cc7792cba18e3a903b2
+    c18ae14419f2550e6d27b856729ac63f06f152c2592220d2ddc0460e562a02a4
+    68001f11133134e8e3a9cb5c27168f887a8dcefb6369cab2437c009327c804b9
+)
+
+package() {
+    install -Dm644 "$srcdir"/random-mac.conf "$pkgdir"/etc/NetworkManager/conf.d/random-mac.conf
+    install -Dm644 "$srcdir"/ignore-power-key.conf "$pkgdir"/etc/systemd/logind.conf.d/ignore-power-key.conf
+    install -Dm644 "$srcdir"/locale.conf "$pkgdir"/etc/locale.conf
+    install -Dm644 "$srcdir"/fstab "$pkgdir"/etc/fstab
+    install -Dm644 "$srcdir"/base-kupfer.lst "$pkgdir"/etc/kupfer/systemd/base-kupfer.lst
+    install -d "$pkgdir/usr/bin"
+    ln -s kupfer-config "$pkgdir/usr/bin/ombootstrap-config"
+}

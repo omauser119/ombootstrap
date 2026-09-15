@@ -1,0 +1,34 @@
+# Port: legengemini; adapted for Ombootstrap
+_mode=cross
+_nodeps=true
+pkgname=device-msm8953-a6plte
+pkgdesc="Samsung Galaxy A6 Plus"
+pkgver=0.1
+pkgrel=4
+_arches=specific
+arch=(aarch64)
+license=(MIT)
+makedepends=(devicepkg-helpers)
+_commit=897dd2b8320c02acdfcf2c30c7013f7baea9b604
+depends=(
+    device-msm8953-common
+    firmware-msm8953-a6plte
+)
+source=(
+    "deviceinfo"
+    "modules-initfs"
+    "machine-info"
+)
+sha256sums=(
+    "66554ea7ed0f909f5d7a924e277518bde80f97e2cbe0d1dc4009c195a2452dc9"
+    "b73b3f657f33483a1be6ce9e98bfb3f9ba45080d963c5e03d40a41408314bef6"
+    "7729d6a89258b470cadd48cfbc704bab7791501c53f45f50737dea6b441a3171"
+)
+
+package() {
+    local modules_list=$(cat "$srcdir/modules-initfs" | tr "\n" " ")
+    cp "$srcdir/deviceinfo" "$srcdir/deviceinfo.generated"
+    echo "deviceinfo_modules_initfs=\"$modules_list\"" >> "$srcdir/deviceinfo.generated"
+    install -Dm644 "$srcdir/deviceinfo.generated" "$pkgdir/etc/kupfer/deviceinfo"
+    install -Dm644 "$srcdir/machine-info" "$pkgdir/etc/machine-info"
+}

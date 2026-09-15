@@ -1,0 +1,19 @@
+[Trigger]
+Type = File
+Operation = Install
+Operation = Upgrade
+Target = boot/Image*
+Target = boot/initramfs-linux.img
+Target = boot/initramfs-initsquared.img
+Target = boot/lk2nd*
+Target = boot/qhypstub*
+Target = usr/lib/initcpio/*
+Target = usr/lib/firmware/*
+Target = etc/mkinitcpio.conf
+Target = etc/mkinitcpio-initsquared.conf
+Target = etc/kupfer/deviceinfo
+
+[Action]
+Description = Updating aboot.img...
+When = PostTransaction
+Exec = /usr/bin/update-bootimg

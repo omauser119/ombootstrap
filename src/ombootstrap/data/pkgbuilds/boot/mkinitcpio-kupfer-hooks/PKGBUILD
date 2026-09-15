@@ -1,0 +1,54 @@
+_mode=cross
+_nodeps=true
+pkgname=mkinitcpio-kupfer-hooks
+pkgdesc="Kupfer-specific hooks to aide in device booting"
+pkgver=0.2
+pkgrel=3
+_arches=specific
+arch=(any)
+license=(GPL3)
+depends=(
+    mkinitcpio
+    mkinitcpio-busybox-kupfer
+)
+install=mkinitcpio-kupfer-hooks.install
+source=(
+    mkinitcpio.conf
+    50-mkinitcpio-overwrite.hook
+    mkinitcpio-overwrite.sh
+    rootfsresize-hooks.sh
+    rootfsresize-install.sh
+    rootfsdetect-hooks.sh
+    rootfsdetect-install.sh
+    firmwaresearchpath-hooks.sh
+    firmwaresearchpath-install.sh
+    kupfer-functions.sh
+    51-rootfs.conf
+)
+sha256sums=(
+    f6aeb7a0571f796f19482d3e1b3fbc13ae9a43221176c80cfb9bd0e3ecfc3e94
+    fa966823232e3af7f7da50c8f542a945f8c42f78dddef9db22098ca288a10966
+    9c4cf2ae50562c49e2beb33ab6029f60ad0012fb3eaf12b13cca1e46872839d9
+    62212d1a0df243d2b3e74bf48e6634aeeb7a28376c0cf09ceb77367789931a40
+    3c3c6180852a1096ebd862721402db2b254b9b08e0e5094027fe298cd2b19e6e
+    afbeef2114542f4b284a8c86c3df9ab7eed8d155c522d8e0b36af45008aaea6d
+    2f36f13ceaed9e3e94ad82d7c48e65bdd75d1698f75d35a408950c2e28184204
+    7d8c5477627a04e0706539f83adf710b7e00f859b84a27a6ae05ff85ed17f1e6
+    aa39559c187dd3aac392481b5a6d57c34ca08196d00ac32e1f5f9013a93681a1
+    74d52f840d7b9fc7799504700996992fc7c74508916eeb1985230a56d36aca6f
+    0e416241f0aa44ebcff04b7d5a18d0f9b9600184ec04c8515b2d847cfb8ddbac
+)
+
+package() {
+    install -Dm644 "$srcdir"/mkinitcpio.conf "$pkgdir"/etc/kupfer/mkinitcpio.conf
+    install -Dm644 "$srcdir"/50-mkinitcpio-overwrite.hook "$pkgdir"/usr/share/libalpm/hooks/50-mkinitcpio-overwrite.hook
+    install -Dm755 "$srcdir"/mkinitcpio-overwrite.sh "$pkgdir"/usr/bin/mkinitcpio-overwrite
+    install -Dm755 "$srcdir"/rootfsresize-hooks.sh "$pkgdir"/usr/lib/initcpio/hooks/rootfsresize
+    install -Dm755 "$srcdir"/rootfsresize-install.sh "$pkgdir"/usr/lib/initcpio/install/rootfsresize
+    install -Dm755 "$srcdir"/rootfsdetect-hooks.sh "$pkgdir"/usr/lib/initcpio/hooks/rootfsdetect
+    install -Dm755 "$srcdir"/rootfsdetect-install.sh "$pkgdir"/usr/lib/initcpio/install/rootfsdetect
+    install -Dm755 "$srcdir"/firmwaresearchpath-hooks.sh "$pkgdir"/usr/lib/initcpio/hooks/firmwaresearchpath
+    install -Dm755 "$srcdir"/firmwaresearchpath-install.sh "$pkgdir"/usr/lib/initcpio/install/firmwaresearchpath
+    install -Dm755 "$srcdir"/kupfer-functions.sh "$pkgdir"/usr/lib/initcpio/hooks/kupfer-functions.sh
+    install -Dm644 "$srcdir"/51-rootfs.conf "$pkgdir"/etc/kupfer/mkinitcpio.conf.d/51-rootfs.conf
+}

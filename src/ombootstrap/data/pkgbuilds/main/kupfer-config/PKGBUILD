@@ -1,0 +1,27 @@
+_mode=cross
+_nodeps=true
+pkgname=kupfer-config
+pkgdesc="Tool to apply specific configurations and state"
+pkgver=0.3
+pkgrel=2
+_arches=specific
+arch=(any)
+license=(GPL-3.0-or-later)
+depends=(python)
+source=(
+    kupfer-config.py
+    systemd_readme.txt
+    example.lst
+)
+sha256sums=(
+    e3acfee35a3234953cfbff1be65a31eb04f9104ba97ea6e7f6ac58a65c274c01
+    124a5ebe95d5395c21d2ad97fef9d88ba53e4f477b9b0a02cf8e073f9a541094
+    df9789f6cb5af275d73a19110b176285ccec7ec0d8e4156bc0e8569a003d2d21
+)
+
+package() {
+    install -Dm755 "$srcdir"/kupfer-config.py "$pkgdir"/usr/bin/kupfer-config
+    install -Dm644 "$srcdir"/systemd_readme.txt "$pkgdir"/etc/kupfer/systemd/readme.txt
+    install -Dm644 "$srcdir"/example.lst "$pkgdir"/etc/kupfer/systemd/overrides.d/example.lst
+    install -dm755 "$pkgdir"/etc/kupfer/systemd/user/overrides.d
+}

@@ -1,0 +1,11 @@
+src/
+pkg/
+*.pkg*
+
+prebuilts*
+
+.srcinfo_initialised.json
+.srcinfo_meta.json
+.SRCINFO
+
+repos.local.yml

@@ -1,0 +1,64 @@
+[project]
+name = "ombootstrap"
+dependencies = [
+    "appdirs>=1.4.4",
+    "click>=8.0.1",
+    "coloredlogs",
+    "enlighten",
+    "joblib>=1.0.1",
+    "munch",
+    "python-dateutil",
+    "PyYAML",
+    "requests",
+    "semver",
+    "toml",
+    "typing_extensions",
+]
+version = "0.1.0"
+requires-python = ">= 3.11"
+
+[project.optional-dependencies]
+all = ["ombootstrap[dev]", "ombootstrap[docs]"]
+
+dev = [
+    "mypy",
+    "pylsp-mypy",
+    "pylsp-rope",
+    "python-lsp-ruff",
+    "pyls-memestra",
+    "pytest",
+    "pytest-cov",
+    "pytest-order",
+    "rope",
+    "ruff==0.11.*",
+]
+
+docs = [
+    "furo", # furo sphinx theme
+    "myst-parser",
+    "sphinx-click",
+    "versjon<=2.3.0",
+]
+
+[project.scripts]
+ombs = "ombootstrap.main:main"
+ombootstrap_wrapper_su_helper = "ombootstrap.wrapper.su_helper:ombootstrap_su"
+
+[tool.setuptools.package-data]
+"ombootstrap" = ["py.typed", "data/pkgbuilds/**/*", "data/pkgbuilds/**/.*"]
+
+[build-system]
+requires = ["setuptools>=41", "wheel" ,]
+build-backend = "setuptools.build_meta"
+
+
+
+
+[tool.pytest.ini_options]
+"markers" = [
+    "integration: run integration tests",
+]
+
+[tool.ruff]
+line-length = 79
+exclude = ["src/ombootstrap/data/pkgbuilds"]

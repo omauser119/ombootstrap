@@ -1,0 +1,4 @@
+{
+  "rootfs_size": 2,
+  "description": "Opens a telnet server over usb in the initramfs - useful for debugging"
+}

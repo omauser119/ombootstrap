@@ -1,0 +1,27 @@
+_mode=cross
+_nodeps=true
+# Port: legengemini; adapted for Ombootstrap
+pkgname=firmware-msm8953-a6plte
+pkgdesc="Firmware files for Samsung Galaxy A6 Plus"
+pkgver=1.1
+pkgrel=3
+_arches=specific
+arch=("aarch64")
+license=("custom:proprietary")
+url="https://gitlab.com/ungeskriptet/firmware-samsung-a6plte"
+options=("!strip")
+
+_commit="8b8be38058ed267ac31004358fcf0ac122e56389"
+# mkinitcpio-kupfer-hooks and msm-firmware-loader use this directory as the
+# additional firmware search path. The old postmarketOS path left the file
+# installed but invisible to qcom_wcnss_ctrl.
+_path="usr/lib/firmware/kupfer/wlan/prima"
+
+source=("$pkgname-WCNSS_qcom_wlan_nv.bin::$url/-/raw/$_commit/lib/firmware/postmarketos/wlan/prima/WCNSS_qcom_wlan_nv.bin")
+
+sha256sums=("67bedb1eedde1c57bc634588f74c947b7b4d3d45de898cf4e158ee717a7d0065")
+
+package() {
+    install -Dm644 "$srcdir/$pkgname-WCNSS_qcom_wlan_nv.bin" \
+        "$pkgdir/$_path/WCNSS_qcom_wlan_nv.bin"
+}

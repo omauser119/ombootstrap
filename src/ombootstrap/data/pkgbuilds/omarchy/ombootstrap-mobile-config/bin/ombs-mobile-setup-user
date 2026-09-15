@@ -1,0 +1,27 @@
+#!/bin/bash
+set -euo pipefail
+[[ $EUID == 0 ]] || { echo 'Run inside the image as root' >&2; exit 1; }
+user=${1:?Usage: ombs-mobile-setup-user USER}
+[[ $user =~ ^[a-z_][a-z0-9_-]*$ ]] || { echo 'Invalid username' >&2; exit 2; }
+user_dir=$(getent passwd "$user" | cut -d: -f6)
+[[ -d $user_dir ]] || { echo 'Create the user first' >&2; exit 1; }
+marker="$user_dir/.local/state/ombootstrap/mobile-configured"
+if [[ ! -f $marker ]]; then
+  mkdir -p "$user_dir/.config" "${marker%/*}"
+  cp -a /usr/share/ombootstrap/mobile/. "$user_dir/.config/"
+  # Add the launcher to the user's profile without discarding shell setup.
+  cat >> "$user_dir/.bash_profile" <<'EOF'
+
+# Ombootstrap touchscreen session on the primary virtual console.
+if [[ -z ${WAYLAND_DISPLAY:-} && $(tty) == /dev/tty1 ]]; then
+  exec ombs-mobile-session
+fi
+EOF
+  touch "$marker"
+  chown -R "$user:$(id -gn "$user")" "$user_dir/.config" "$user_dir/.local"
+  chown "$user:$(id -gn "$user")" "$user_dir/.bash_profile"
+fi
+install -d /etc/systemd/system/getty@tty1.service.d
+printf '[Service]\nExecStart=\nExecStart=-/sbin/agetty --autologin %s --noclear %%I $TERM\n' "$user" > /etc/systemd/system/getty@tty1.service.d/ombootstrap.conf
+cp /usr/share/ombootstrap/os-release /etc/os-release
+systemctl enable getty@tty1.service

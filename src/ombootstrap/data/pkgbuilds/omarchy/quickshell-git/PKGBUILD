@@ -1,0 +1,75 @@
+_mode=host
+# Maintainer: Entailz <entail-wraps0r at icloud dot com>
+_pkgname=quickshell
+pkgname="$_pkgname-git"
+pkgdesc="Flexible toolkit for making desktop shells with QtQuick"
+pkgver=0.3.0.r20.g28771c7
+pkgrel=2
+_arches=all
+arch=(
+    x86_64
+    aarch64
+)
+license=("LGPL-3.0-only")
+url="https://git.outfoxxed.me/quickshell/quickshell"
+provides=("$_pkgname")
+conflicts=("$_pkgname")
+depends=(
+    "qt6-declarative"
+    "qt6-base"
+    "jemalloc"
+    "qt6-svg"
+    "libpipewire"
+    "libxcb"
+    "wayland"
+    "libdrm"
+    "mesa"
+    "cpptrace"
+    "vulkan-headers"
+    "polkit"
+)
+makedepends=(
+    "spirv-tools"
+    "qt6-shadertools"
+    "wayland"
+    "wayland-protocols"
+    "cli11"
+    "ninja"
+    "cmake"
+    "git"
+)
+options=(!strip)
+_pkgsrc="$_pkgname"
+_commit=28771c7c74b42e20afca0b1b63980cb46515537c
+source=(
+    "$_pkgsrc"::"git+$url.git#commit=$_commit"
+    quickshell-check.hook
+)
+sha256sums=(
+    SKIP
+    "8543e21aeaaa5441b73a679160e7601a957f16c433e8d6bd9257e80bd0e94083"
+)
+
+pkgver() {
+  cd "$_pkgsrc"
+  git describe --long --tags --abbrev=7 --exclude="*[a-zA-Z][a-zA-Z]*" \
+    | sed -E "s/^[^0-9]*//;s/([^-]*-g)/r\1/;s/-/./g"
+}
+
+build() {
+  cd "$_pkgname"
+  cmake -GNinja -B build \
+    -DCMAKE_BUILD_TYPE="RelWithDebInfo" \
+    -DCMAKE_INSTALL_PREFIX=/usr \
+    -DDISTRIBUTOR="AUR (package: quickshell-git)" \
+    -DINSTALL_QML_PREFIX=lib/qt6/qml
+
+  cmake --build build
+}
+
+package() {
+  install -Dm644 "quickshell-check.hook" -t "$pkgdir/usr/share/libalpm/hooks"
+  cd "$_pkgname"
+  DESTDIR="$pkgdir" cmake --install build
+  install -Dm644 "LICENSE" -t "$pkgdir/usr/share/licenses/$_pkgname"
+}

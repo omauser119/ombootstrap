@@ -1,0 +1,6 @@
+[Desktop Entry]
+Name=Omarchy Mobile
+Comment=Omarchy Hyprland touchscreen session
+Exec=Hyprland
+Type=Application
+DesktopNames=Hyprland

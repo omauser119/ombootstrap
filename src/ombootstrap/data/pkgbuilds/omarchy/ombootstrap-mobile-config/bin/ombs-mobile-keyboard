@@ -1,0 +1,18 @@
+#!/bin/bash
+set -euo pipefail
+exec 9>"${XDG_RUNTIME_DIR:?}/ombs-mobile-keyboard.lock"
+flock 9
+case ${1:-toggle} in
+  start)
+    systemctl --user start ombs-mobile-keyboard.service
+    ;;
+  toggle)
+    if systemctl --user is-active --quiet ombs-mobile-keyboard.service; then
+      systemctl --user kill --kill-whom=main --signal=SIGRTMIN ombs-mobile-keyboard.service
+    else
+      # A fresh service starts visible, so the recovery press needs no signal.
+      systemctl --user start ombs-mobile-keyboard.service
+    fi
+    ;;
+  *) echo 'Usage: ombs-mobile-keyboard [start|toggle]' >&2; exit 2 ;;
+esac

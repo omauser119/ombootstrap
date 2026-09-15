@@ -1,0 +1,57 @@
+# Maintainer: Leonidas P. <jpegxguy at outlook dot com>
+# Maintainer: Jerry <isjerryxiao at outlook dot com>
+# Contributor: Anes Belfodil <ans.belfodil at gmail dot com>
+# Contributor: David Rheinsberg <david.rheinsberg at gmail dot com>
+# Contributor: David Herrmann <dh.herrmann at gmail dot com>
+_mode=host
+_nodeps=true
+_pkgname=qemu-user
+pkgname=qemu-user-static-bin
+pkgdesc="A generic and open source machine emulator, statically linked"
+pkgver=10.0.11
+pkgrel=1
+_arches=all
+arch=(
+    x86_64
+    i686
+    aarch64
+    armv7h
+    armv6h
+)
+license=(
+    GPL2
+    LGPL2.1
+)
+url=http://wiki.qemu.org
+provides=(
+    qemu-user
+    qemu-user-static
+)
+conflicts=(
+    qemu-user
+    qemu-user-static
+)
+_pkgadditver="+ds-0+deb13u1"
+# case "${CARCH}" in
+#    "")_pkgadditver="+dfsg-sth-else"
+# esac
+
+source_x86_64=("https://deb.debian.org/debian/pool/main/q/qemu/${_pkgname}_${pkgver}${_pkgadditver}_amd64.deb")
+source_i686=("https://deb.debian.org/debian/pool/main/q/qemu/${_pkgname}_${pkgver}${_pkgadditver}_i386.deb")
+source_aarch64=("https://deb.debian.org/debian/pool/main/q/qemu/${_pkgname}_${pkgver}${_pkgadditver}_arm64.deb")
+source_armv7h=("https://deb.debian.org/debian/pool/main/q/qemu/${_pkgname}_${pkgver}${_pkgadditver}_armhf.deb")
+source_armv6h=("https://deb.debian.org/debian/pool/main/q/qemu/${_pkgname}_${pkgver}${_pkgadditver}_armel.deb")
+
+sha256sums_x86_64=('6b6fea55551fbcc1eb30e146ad5abdfbb49f8fa8c5998016242126de4d7f80df')
+sha256sums_i686=('3d27f62a8a787b28c2f474ccc4e695d38f65e51a5558dda9c874c60d8d67c523')
+sha256sums_aarch64=('bb194fdc8c20a11b30e69cae469152942fb7921a0634dac5bea8e82cf6c807ae')
+sha256sums_armv7h=('00c3cb9c9f08db641c57c8ad89c157c39343f7899b04720054ee84efd79ec1c4')
+sha256sums_armv6h=('a09f5074e1edb046563c322e9091a00f6106d6405412e2268fb4fca8a268ed5f')
+
+package() {
+    cd "${pkgdir}"
+    tar -xf "${srcdir}/data.tar.xz" --exclude=./usr/share/man/man1/qemu-debootstrap.1.gz ./usr/bin ./usr/share/man
+    for i in $(find usr/bin -name 'qemu-*' -and -not -name '*-static') ; do
+        ln -srvf "$i" "$i"-static
+    done
+}

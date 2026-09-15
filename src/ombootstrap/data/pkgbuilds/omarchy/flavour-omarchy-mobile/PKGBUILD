@@ -1,0 +1,22 @@
+_mode=cross
+_nodeps=true
+pkgname=flavour-omarchy-mobile
+pkgdesc="Ombootstrap flavour: Omarchy Hyprland and Quickshell for touchscreens"
+pkgver=0.1.0
+pkgrel=2
+_arches=specific
+arch=(aarch64)
+license=(GPL-3.0-or-later)
+depends=(
+    omarchy-mobile
+    ombootstrap-mobile-config
+    wvkbd
+    firefox
+    mobile-config-firefox
+    hook-debug-shell
+)
+
+package() {
+    install -d "$pkgdir/usr/share/ombootstrap"
+    printf "%s\n" omarchy-mobile > "$pkgdir/usr/share/ombootstrap/flavour"
+}

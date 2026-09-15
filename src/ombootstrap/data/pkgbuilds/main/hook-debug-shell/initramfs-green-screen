@@ -1,0 +1,69 @@
+#!/usr/bin/ash
+# Paint the native 1080x2220 A6+ panel while initramfs advances.
+export PATH=/usr/bin:/usr/sbin:/bin:/sbin
+STAGE_FILE=/run/initramfs-stage
+IMAGE_DIR=/usr/share/initramfs
+
+stage_image() {
+    case "$1" in
+        starting)     echo "$IMAGE_DIR/green-00.ppm" ;;
+        devices)      echo "$IMAGE_DIR/green-01.ppm" ;;
+        modules)      echo "$IMAGE_DIR/green-02.ppm" ;;
+        usb)          echo "$IMAGE_DIR/green-03.ppm" ;;
+        rootfs-detect) echo "$IMAGE_DIR/green-04.ppm" ;;
+        rootfs-ready)  echo "$IMAGE_DIR/green-05.ppm" ;;
+        rootfs-resize) echo "$IMAGE_DIR/green-06.ppm" ;;
+        fsck)         echo "$IMAGE_DIR/green-07.ppm" ;;
+        mount|mounted|late) echo "$IMAGE_DIR/green-08.ppm" ;;
+        cleanup|handoff) echo "$IMAGE_DIR/green-09.ppm" ;;
+        rootfs-not-found|error) echo "$IMAGE_DIR/green-10.ppm" ;;
+        mount-error)   echo "$IMAGE_DIR/green-11.ppm" ;;
+        rootfs-not-mounted) echo "$IMAGE_DIR/green-12.ppm" ;;
+        init-missing)  echo "$IMAGE_DIR/green-13.ppm" ;;
+        resize-error)  echo "$IMAGE_DIR/green-14.ppm" ;;
+        fsck-error)    echo "$IMAGE_DIR/green-15.ppm" ;;
+        usb-error)     echo "$IMAGE_DIR/green-16.ppm" ;;
+        switchroot-error) echo "$IMAGE_DIR/green-17.ppm" ;;
+        *)            echo "$IMAGE_DIR/green-00.ppm" ;;
+    esac
+}
+
+for attempt in $(seq 1 300); do
+    [ ! -c /dev/fb0 ] || break
+    sleep 0.1
+done
+if [ ! -c /dev/fb0 ]; then
+    echo "Green screen: framebuffer /dev/fb0 did not appear" >&2
+    exit 0
+fi
+[ ! -w /sys/class/graphics/fb0/blank ] || echo 0 > /sys/class/graphics/fb0/blank
+for backlight in /sys/class/backlight/*; do
+    [ -r "$backlight/brightness" ] && [ -r "$backlight/max_brightness" ] || continue
+    if [ "$(cat "$backlight/brightness")" = 0 ]; then
+        maximum=$(cat "$backlight/max_brightness")
+        level=$((maximum / 2))
+        [ "$level" -gt 0 ] || level=1
+        echo "$level" > "$backlight/brightness"
+    fi
+done
+# fbcon can repaint on kernel messages, so refresh periodically.
+last_stage=
+frame=0
+while :; do
+    stage=starting
+    [ -s "$STAGE_FILE" ] && stage=$(cat "$STAGE_FILE")
+    image=$(stage_image "$stage")
+    if [ "$stage" != "$last_stage" ] || [ "$frame" -ge 4 ]; then
+        busybox fbsplash -c -d /dev/fb0 -s "$image" || exit 1
+        last_stage="$stage"
+        frame=0
+    fi
+    case "$stage" in
+        rootfs-not-found|mount-error|rootfs-not-mounted|init-missing|resize-error|fsck-error|usb-error|switchroot-error)
+            exit 0
+            ;;
+    esac
+    [ "$stage" = handoff ] && exit 0
+    sleep 0.25
+    frame=$((frame + 1))
+done

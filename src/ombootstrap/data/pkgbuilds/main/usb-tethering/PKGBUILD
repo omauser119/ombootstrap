@@ -1,0 +1,39 @@
+_mode=cross
+_nodeps=true
+pkgname=usb-tethering
+pkgdesc="USB tethering on ConfigFS systems"
+pkgver=0.1
+pkgrel=7
+_arches=specific
+arch=(any)
+license=(MIT)
+url=https://gitlab.com/postmarketOS/pmaports/-/blob/master/main/postmarketos-mkinitfs/init_functions.sh
+depends=(
+    systemd
+    unudhcpd
+)
+options=()
+source=(
+    usb-tethering.sh
+    usb-file-transfer.sh
+    usb-tethering.service
+    usb-tethering.lst
+)
+sha256sums=(
+    "db2332317c5cd5f16519357eea1b10d6fea6430da241c3bae1641828be86a952"
+    "fdb481c22a5838dbbbf0a00f3e335106f5dd475c7b7d0b443f7d77d76d914ac2"
+    "11ca32c8b453a97ed92200b1bb9bde662bae4525804219ae97b8a125af1dc16d"
+    "9681fac31cb272127531c439cdd0b07283e0cdbb9f2e135624813e9dbc7c5ee6"
+)
+
+package() {
+    cd "${srcdir}"
+
+    install -Dm 755 usb-tethering.sh "${pkgdir}/usr/bin/usb-tethering"
+    install -Dm 755 usb-file-transfer.sh "${pkgdir}/usr/bin/usb-file-transfer"
+
+    install -d "${pkgdir}/usr/lib/systemd/system/"
+    install -m 644 usb-tethering.service "${pkgdir}/usr/lib/systemd/system/"
+
+    install -Dm644 "$srcdir"/usb-tethering.lst "$pkgdir"/etc/kupfer/systemd/usb-tethering.lst
+}

@@ -1,0 +1,30 @@
+_mode=host
+# Maintainer: Omarchy <hello@omarchy.org>
+pkgname=ttf-jetbrains-mono-nerd-basic
+pkgdesc="Basic JetBrains Mono Nerd Font family"
+pkgver=3.5.0
+pkgrel=1
+_arches=all
+arch=("any")
+license=("OFL-1.1-no-RFN")
+url="https://github.com/ryanoasis/nerd-fonts"
+provides=(
+    "ttf-font-nerd"
+    "ttf-jetbrains-mono-nerd=$pkgver"
+)
+conflicts=(
+    "ttf-jetbrains-mono-nerd"
+    "nerd-fonts-jetbrains-mono"
+)
+source=("JetBrainsMono-${pkgver}.zip::https://github.com/ryanoasis/nerd-fonts/releases/download/v${pkgver}/JetBrainsMono.zip")
+sha256sums=("9577de1ae84ec523df16fc69bac5338b89497a5b4fb91489e2dcb79dc06ac2b5")
+
+package() {
+  local font
+  for font in Regular Bold Italic BoldItalic; do
+    install -Dm644 "JetBrainsMonoNerdFont-${font}.ttf" \
+      "$pkgdir/usr/share/fonts/TTF/JetBrainsMonoNerdFont-${font}.ttf"
+  done
+
+  install -Dm644 OFL.txt "$pkgdir/usr/share/licenses/$pkgname/OFL.txt"
+}
